@@ -14,4 +14,7 @@ Anggota Kelompok:
     <video controls src="Recording-2026-10-01-095141.mp4" title="Title"></video>
 2. Tugas Anggota Kelompok
     - accept member
+    Nama: Muhammad Raffi
+
+    ![alt text](image-1.png)
     - clone project
