@@ -14,6 +14,12 @@ Anggota Kelompok:
     <video controls src="Recording-2026-10-01-095141.mp4" title="Title"></video>
 2. Tugas Anggota Kelompok
     - accept member
-    Nama : Intan Fairuz Nur Asiyah - 2488010005
+     Nama: Muhammad Raffi - 2488010046
+     
     ![alt text](image-1.png)
-    - clone project 
+
+    ========
+    Nama: Intan Fairuz Nur Asiyah - 2488010005
+
+    ![alt text](image-2.png)
+    - clone project
