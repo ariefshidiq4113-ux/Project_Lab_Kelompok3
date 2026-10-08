@@ -26,4 +26,10 @@ Anggota Kelompok:
     Nama: Ummu Badriyah Mualifah - 2488010082
 
     ![alt text](image-4.png)
+
+   Nama: Rifa'ah Fatihatu Sa'adah - 2488010008
+
+   <img width="960" height="540" alt="Screenshot 2026-10-01 093250" src="https://github.com/user-attachments/assets/3b5eca49-9e35-49b5-9dbc-a070b69e8481" />
+
+
     - clone project
