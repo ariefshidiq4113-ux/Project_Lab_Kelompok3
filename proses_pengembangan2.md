@@ -14,3 +14,6 @@ Rancang Bangun Sistem Informasi Presensi Mahasiswa Berbasis Liveness Face Recogn
     - Role: UI/UX
 5. Rifa'ah Fatihatu Sa'adah
     - Role: ML OPS
+
+## Sketch App ##
+![alt text](<WhatsApp Image 2026-10-08 at 10.43.40 AM.jpeg>)
