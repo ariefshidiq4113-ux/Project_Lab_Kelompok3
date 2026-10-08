@@ -10,6 +10,7 @@ Anggota Kelompok:
 1. Tugas Ketua Kelompok(Muhammad 'Arif Nur Shidiq)
     - Inisiasi Project dan Invite Member
     ![alt text](image.png)
+    - publish project ke github
     - Create Project (npx create-expo-app@latest)
     <video controls src="Recording-2026-10-01-095141.mp4" title="Title"></video>
 2. Tugas Anggota Kelompok
