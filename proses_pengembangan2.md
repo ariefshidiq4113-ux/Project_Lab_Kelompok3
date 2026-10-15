@@ -17,3 +17,11 @@ Rancang Bangun Sistem Informasi Presensi Mahasiswa Berbasis Liveness Face Recogn
 
 ## Sketch App ##
 ![alt text](<WhatsApp Image 2026-10-08 at 10.43.40 AM.jpeg>)
+
+![alt text](image-5.png)
+
+![alt text](image-6.png)
+
+![alt text](image-7.png)
+
+![alt text](image-8.png)
