@@ -16,7 +16,6 @@ Rancang Bangun Sistem Informasi Presensi Mahasiswa Berbasis Liveness Face Recogn
     - Role: ML OPS
 
 ## Sketch App ##
-![alt text](<WhatsApp Image 2026-10-08 at 10.43.40 AM.jpeg>)
 
 ![alt text](image-5.png)
 
