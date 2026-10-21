@@ -61,7 +61,7 @@ Bagian ini digunakan untuk mendokumentasikan tampilan antarmuka aplikasi yang te
 
 ### 4.1 Admin
 **Penanggung jawab:** Arif
-![Screenshot Admin](screenshots/admin.png)
+<img width="117" height="412" alt="image" src="https://github.com/user-attachments/assets/62807b2e-6d6b-46f0-b29a-6b1bb5316dc4" />
 Keterangan: Halaman admin untuk pengelolaan dan administrasi aplikasi Absensi Pintar HIMAFOR.
 
 ### 4.2 Login
