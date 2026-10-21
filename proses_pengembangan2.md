@@ -123,7 +123,8 @@ Langkah berikut merupakan template umum. Sesuaikan dengan jenis proyek dan tekno
 6. Jalankan aplikasi menggunakan perintah atau server yang sesuai dengan teknologi yang digunakan.
 7. Buka alamat lokal aplikasi melalui browser.
 8. Uji setiap halaman untuk memastikan tampilan dan navigasi berjalan sesuai rancangan.
-
+## VIDEO DEMO
+https://github.com/user-attachments/assets/fd8228e1-6c30-4eee-9b58-020e2dbf2d85
 ## Sketch App ##
 ![alt text](image-5.png)
 
