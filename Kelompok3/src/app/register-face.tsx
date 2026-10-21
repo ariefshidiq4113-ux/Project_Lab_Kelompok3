@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { HimaforHeader } from '@/components/himafor-header';
+import {  useRouter } from 'expo-router';
 
 const PRIMARY = '#101477';
 const TEAL = '#39BFB7';
@@ -27,10 +28,14 @@ export default function RegisterFaceScreen() {
   const { width } = useWindowDimensions();
   const cameraWidth = Math.min(220, width - 64);
   const [currentSample, setCurrentSample] = useState(2); // 0-indexed, tampil "Sampel 3 dari 5"
+  const router = useRouter()
 
   const handleTakeSample = () => {
     if (currentSample < TOTAL_SAMPLES - 1) {
       setCurrentSample((prev) => prev + 1);
+    }
+    if(currentSample===4){
+        router.replace("/beranda")
     }
   };
 
