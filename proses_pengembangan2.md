@@ -14,20 +14,18 @@ Pengembangan aplikasi berfokus pada kemudahan penggunaan, tampilan antarmuka yan
 - Mendukung pengelolaan data absensi melalui halaman admin.
 
 ## 2. Daftar Screen dan Fitur UI
-Berikut daftar halaman yang dikembangkan beserta fitur utama dan penanggung jawab masing-masing.
-| No. | Screen | Fitur UI | Penanggung Jawab |
-| 1 | Admin | Halaman pengelolaan dan administrasi sistem | Arif |
-| 2 | Login | Form login dan tombol masuk ke aplikasi | Rafi |
-| 3 | Aktivasi Wajah | Antarmuka aktivasi atau pendaftaran wajah | Rafi |
-| 4 | Dashboard | Tampilan utama dan ringkasan informasi aplikasi | Intan |
-| 5 | Kegiatan | Daftar kegiatan HIMAFOR | Rifa |
-| 6 | Detail Kegiatan | Informasi lengkap mengenai kegiatan yang dipilih | Intan |
-| 7 | Presensi | Antarmuka untuk melakukan presensi kegiatan | Ummu |
-| 8 | Presensi Berhasil | Informasi bahwa presensi berhasil dilakukan | Rafi |
-| 9 | Presensi Ditolak | Informasi bahwa presensi ditolak atau tidak berhasil | Rifa |
-| 10 | Riwayat | Daftar dan informasi riwayat kehadiran | Rifa |
-| 11 | Profil | Informasi dan pengelolaan profil pengguna | Ummu |
-| 12 | Notifikasi | Daftar pemberitahuan terkait kegiatan dan presensi | Ummu |
+1. Admin: Halaman pengelolaan dan administrasi sistem.
+2. Login: Form login dan tombol masuk ke aplikasi.
+3. Aktivasi Wajah: Antarmuka aktivasi atau pendaftaran wajah.
+4. Dashboard: Tampilan utama dan ringkasan informasi aplikasi.
+5. Kegiatan: Halaman daftar kegiatan HIMAFOR.
+6. Detail Kegiatan: Halaman informasi lengkap kegiatan yang dipilih.
+7. Presensi: Antarmuka untuk melakukan presensi kegiatan.
+8. Presensi Berhasil: Halaman konfirmasi presensi berhasil.
+9. Presensi Ditolak: Halaman informasi presensi ditolak atau tidak berhasil.
+10. Riwayat: Halaman daftar dan informasi riwayat kehadiran.
+11. Profil: Halaman informasi dan pengelolaan profil pengguna.
+12. Notifikasi: Halaman pemberitahuan terkait kegiatan dan presensi.
 
 ## 3. Pembagian Tugas Anggota Kelompok
 Pembagian tugas pengembangan antarmuka aplikasi Absensi Pintar HIMAFOR adalah sebagai berikut.
@@ -68,13 +66,10 @@ Keterangan: Halaman admin untuk pengelolaan dan administrasi aplikasi Absensi Pi
 
 ### 4.2 Login
 **Penanggung jawab:** Rafi
-![Screenshot Login](screenshots/login.png)
-Keterangan: Halaman login yang digunakan pengguna untuk masuk ke aplikasi.
-
 ### 4.3 Aktivasi Wajah
-**Penanggung jawab:** Rafi
-![Screenshot Aktivasi Wajah](screenshots/aktivasi-wajah.png)
 Keterangan: Halaman untuk melakukan aktivasi atau pendaftaran wajah sebagai bagian dari mekanisme presensi.
+<img width="317" height="308" alt="image" src="https://github.com/user-attachments/assets/0d9ddee9-16e5-4fbe-87a7-9ba29ce2d595" />
+Keterangan: Halaman login yang digunakan pengguna untuk masuk ke aplikasi.
 
 ### 4.4 Dashboard
 **Penanggung jawab:** Intan
