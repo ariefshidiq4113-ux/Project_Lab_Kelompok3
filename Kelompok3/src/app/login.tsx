@@ -10,6 +10,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { Feather } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -30,9 +32,12 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}>
           {/* Logo & Branding */}
           <View style={styles.brandSection}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoLetter}>H</Text>
-            </View>
+            <Image
+              source={require('@/assets/images/himafor-logo.png')}
+              style={styles.logo}
+              contentFit="contain"
+              accessibilityLabel="Logo HIMAFOR"
+            />
             <Text style={styles.appName}>HIMAFOR</Text>
             <Text style={styles.subtitle}>Attendance System</Text>
           </View>
@@ -41,33 +46,39 @@ export default function LoginScreen() {
           <View style={styles.formSection}>
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="nama@email.com"
-                placeholderTextColor="#9CA3AF"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-                accessibilityLabel="Email"
-              />
+              <View style={styles.inputWrap}>
+                <Feather name="mail" size={18} color="#7183A2" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="nama@email.com"
+                  placeholderTextColor="#9CA3AF"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  accessibilityLabel="Email"
+                />
+              </View>
             </View>
 
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#9CA3AF"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-                accessibilityLabel="Password"
-              />
+              <View style={styles.inputWrap}>
+                <Feather name="lock" size={18} color="#7183A2" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="#9CA3AF"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                  accessibilityLabel="Password"
+                />
+              </View>
             </View>
 
             <TouchableOpacity
@@ -89,7 +100,7 @@ export default function LoginScreen() {
   );
 }
 
-const PRIMARY = '#1A237E';
+const PRIMARY = '#101477';
 
 const styles = StyleSheet.create({
   flex: {
@@ -105,23 +116,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 48,
   },
+  formSection: {
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
+    padding: 22,
+    borderRadius: 22,
+    backgroundColor: '#F4F7FC',
+    borderWidth: 1,
+    borderColor: '#DCE5F0',
+    gap: 16,
+  },
   brandSection: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 32,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: PRIMARY,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
+    width: 76,
+    height: 76,
     marginBottom: 16,
-  },
-  logoLetter: {
-    color: '#FFFFFF',
-    fontSize: 40,
-    fontWeight: '700',
   },
   appName: {
     color: PRIMARY,
@@ -135,9 +148,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '400',
   },
-  formSection: {
-    gap: 16,
-  },
   fieldGroup: {
     gap: 6,
   },
@@ -147,13 +157,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    flex: 1,
+    paddingVertical: 13,
     fontSize: 15,
     color: '#111827',
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#DCE5F0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
     backgroundColor: '#FFFFFF',
   },
   loginButton: {

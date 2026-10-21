@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import {
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { HimaforHeader } from '@/components/himafor-header';
 
-const PRIMARY = '#1A237E';
-const TEAL = '#26C6B0';
+const PRIMARY = '#101477';
+const TEAL = '#39BFB7';
 const TOTAL_SAMPLES = 5;
 
 const POSE_INSTRUCTIONS = [
@@ -20,6 +24,8 @@ const POSE_INSTRUCTIONS = [
 ];
 
 export default function RegisterFaceScreen() {
+  const { width } = useWindowDimensions();
+  const cameraWidth = Math.min(220, width - 64);
   const [currentSample, setCurrentSample] = useState(2); // 0-indexed, tampil "Sampel 3 dari 5"
 
   const handleTakeSample = () => {
@@ -32,31 +38,19 @@ export default function RegisterFaceScreen() {
   const poseInstruction = POSE_INSTRUCTIONS[currentSample] ?? '';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.logoBox}>
-            <Text style={styles.logoLetter}>H</Text>
-          </View>
-          <Text style={styles.headerTitle}>HIMAFOR</Text>
-        </View>
-        <View style={styles.anggotaBadge}>
-          <Text style={styles.anggotaText}>Anggota</Text>
-        </View>
-      </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.content}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <HimaforHeader role="Anggota" />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}>
         {/* Page title */}
         <Text style={styles.pageTitle}>Daftarkan wajah</Text>
 
         {/* Info card */}
         <View style={styles.infoCard}>
           <View style={styles.infoIconContainer}>
-            {/* Face scan icon using unicode approximation */}
-            <Text style={styles.infoIcon}>⬚</Text>
+            <Feather name="maximize" size={19} color={PRIMARY} />
           </View>
           <Text style={styles.infoText}>
             Hanya sekali, setelah login pertama.{'\n'}
@@ -66,7 +60,11 @@ export default function RegisterFaceScreen() {
 
         {/* Camera oval preview */}
         <View style={styles.cameraContainer}>
-          <View style={styles.ovalOuter}>
+          <View
+            style={[
+              styles.ovalOuter,
+              { width: cameraWidth, height: Math.min(260, cameraWidth * 1.18) },
+            ]}>
             <Text style={styles.cameraPlaceholderText}>Pratinjau kamera</Text>
           </View>
         </View>
@@ -88,7 +86,7 @@ export default function RegisterFaceScreen() {
         <Text style={styles.instructionText}>
           {sampelLabel} · {poseInstruction}
         </Text>
-      </View>
+      </ScrollView>
 
       {/* Bottom CTA */}
       <View style={styles.footer}>
@@ -111,58 +109,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  logoBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: PRIMARY,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoLetter: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  headerTitle: {
-    color: PRIMARY,
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  anggotaBadge: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  anggotaText: {
-    color: '#374151',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
+  scroll: {
+    flex: 1,
+    backgroundColor: '#F4F7FC',
   },
 
   // Content
   content: {
-    flex: 1,
+    flexGrow: 1,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
     paddingHorizontal: 24,
     paddingTop: 24,
     alignItems: 'center',
@@ -194,10 +151,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  infoIcon: {
-    fontSize: 18,
-    color: PRIMARY,
-  },
   infoText: {
     flex: 1,
     color: '#374151',
@@ -212,9 +165,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   ovalOuter: {
-    width: 220,
-    height: 260,
-    borderRadius: 110,
+    borderRadius: 999,
     borderWidth: 2.5,
     borderColor: '#60A5FA',
     borderStyle: 'dashed',
@@ -257,8 +208,11 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    paddingTop: 12,
+    paddingBottom: 12,
+    paddingTop: 10,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   ctaButton: {
     backgroundColor: TEAL,

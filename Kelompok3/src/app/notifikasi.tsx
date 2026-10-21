@@ -1,19 +1,16 @@
 import {
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { HimaforHeader } from '@/components/himafor-header';
-import { MainTabBar } from '@/components/main-tab-bar';
+import { Feather } from '@expo/vector-icons';
+import { MainScreen } from '@/components/main-screen';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const PRIMARY = '#1A237E';
-const TEAL_BG = '#E0F7F5';
-const TEAL_BORDER = '#26A69A';
+const PRIMARY = '#101477';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type NotifType = 'sesi' | 'kegiatan' | 'ditolak';
@@ -49,25 +46,23 @@ const NOTIFIKASI_DATA: Notifikasi[] = [
 
 // ─── Notification Card ────────────────────────────────────────────────────────
 function NotifCard({ item }: { item: Notifikasi }) {
-  // The first item (type === 'sesi') uses the teal highlight style
-  const isHighlighted = item.type === 'sesi';
+  const icon =
+    item.type === 'sesi'
+      ? 'bell'
+      : item.type === 'kegiatan'
+        ? 'calendar'
+        : 'x-circle';
 
   return (
-    <View
-      style={[
-        styles.card,
-        isHighlighted ? styles.cardHighlighted : styles.cardDefault,
-      ]}
-      accessibilityRole="text"
-      accessibilityLabel={`${item.title}. ${item.subtitle}`}>
-      <Text
-        style={[
-          styles.cardTitle,
-          isHighlighted && styles.cardTitleHighlighted,
-        ]}>
-        {item.title}
-      </Text>
-      <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+    <View style={styles.card} accessibilityLabel={`${item.title}. ${item.subtitle}`}>
+      <View style={styles.iconWrap}>
+        <Feather name={icon} size={19} color={PRIMARY} />
+      </View>
+      <View style={styles.cardCopy}>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+      </View>
+      <Feather name="chevron-right" size={18} color="#7183A2" />
     </View>
   );
 }
@@ -77,23 +72,18 @@ export default function NotifikasiScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.app}>
-        <HimaforHeader />
-
-        {/* ── Page title with back button ── */}
+    <MainScreen activePath="/beranda">
       <View style={styles.pageTitleRow}>
-        <TouchableOpacity
+        <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
           accessibilityLabel="Kembali"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
+          <Feather name="arrow-left" size={21} color={PRIMARY} />
+        </Pressable>
         <Text style={styles.pageTitle}>Notifikasi</Text>
       </View>
 
-      {/* ── Notification list ── */}
       <FlatList
         data={NOTIFIKASI_DATA}
         keyExtractor={(item) => item.id}
@@ -105,40 +95,19 @@ export default function NotifikasiScreen() {
         }
       />
 
-        {/* ── Bottom Tab Bar ── */}
-        <MainTabBar activePath="/beranda" />
-      </View>
-    </SafeAreaView>
+    </MainScreen>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  app: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 430,
-    backgroundColor: '#FFFFFF',
-  },
-
-  // Page title row
   pageTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 22,
     paddingBottom: 16,
-    gap: 12,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: PRIMARY,
-    fontWeight: '700',
+    gap: 10,
   },
   pageTitle: {
     fontSize: 24,
@@ -151,6 +120,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     gap: 12,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   emptyText: {
     textAlign: 'center',
@@ -161,28 +133,32 @@ const styles = StyleSheet.create({
 
   // Cards
   card: {
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 4,
-  },
-  cardHighlighted: {
-    backgroundColor: TEAL_BG,
-    borderWidth: 1.5,
-    borderColor: TEAL_BORDER,
-  },
-  cardDefault: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 15,
+    gap: 12,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
+    borderWidth: 1,
+    borderColor: '#DCE5F0',
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EAF3FA',
+  },
+  cardCopy: {
+    flex: 1,
+    gap: 4,
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: PRIMARY,
-  },
-  cardTitleHighlighted: {
-    color: TEAL_BORDER,
   },
   cardSubtitle: {
     fontSize: 13,

@@ -1,21 +1,29 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { HimaforHeader } from '@/components/himafor-header';
 
-const PRIMARY = '#1A237E';
-const TEAL = '#26C6B0';
+const PRIMARY = '#101477';
+const TEAL = '#39BFB7';
 
 export default function PresensiTercatatScreen() {
+  const router = useRouter();
+
   const handleSelesai = () => {
-    // TODO: navigate back to home or dashboard
+    router.replace('/kegiatan');
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <HimaforHeader />
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}>
         {/* Success icon */}
         <View style={styles.iconOuterRing}>
           <View style={styles.iconInnerCircle}>
-            <Text style={styles.checkmark}>✓</Text>
+            <Feather name="check" size={34} color="#FFFFFF" />
           </View>
         </View>
 
@@ -47,7 +55,7 @@ export default function PresensiTercatatScreen() {
           accessibilityLabel="Selesai">
           <Text style={styles.buttonText}>Selesai</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -58,11 +66,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    gap: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 32,
+    gap: 24,
   },
 
   // Success icon
@@ -82,13 +94,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkmark: {
-    color: PRIMARY,
-    fontSize: 32,
-    fontWeight: '800',
-    lineHeight: 38,
-  },
-
   // Title
   title: {
     color: PRIMARY,

@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
 
-export function HimaforHeader() {
+export function HimaforHeader({ role }: { role?: string }) {
   return (
     <View style={styles.header}>
       <Image
@@ -11,7 +11,13 @@ export function HimaforHeader() {
         accessibilityLabel="Logo HIMAFOR"
       />
       <Text style={styles.brand}>HIMAFOR</Text>
-      <View style={styles.onlineDot} />
+      {role ? (
+        <View style={styles.roleBadge}>
+          <Text style={styles.roleText}>{role}</Text>
+        </View>
+      ) : (
+        <View style={styles.spacer} />
+      )}
     </View>
   );
 }
@@ -19,25 +25,38 @@ export function HimaforHeader() {
 const styles = StyleSheet.create({
   header: {
     height: 52,
+    minHeight: 60,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    gap: 8,
+    paddingHorizontal: 16,
+    gap: 10,
     backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#DCE5F0',
   },
   logo: {
-    height: 24,
-    width: 24,
+    height: 30,
+    width: 30,
   },
   brand: {
     color: '#101477',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
+    letterSpacing: 0.4,
   },
-  onlineDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#39BFB7',
+  roleBadge: {
+    marginLeft: 'auto',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#EAF3FA',
+  },
+  roleText: {
+    color: '#3289D1',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  spacer: {
+    flex: 1,
   },
 });
