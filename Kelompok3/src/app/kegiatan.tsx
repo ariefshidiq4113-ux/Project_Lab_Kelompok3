@@ -53,7 +53,7 @@ export default function KegiatanScreen() {
             <ActivityCard
               key={activity.title}
               activity={activity}
-              onPress={() => router.push('/presensi-ditolak')}
+              onPress={() => router.push('/presensi-ditolak' as any)}
             />
           ))}
         </View>

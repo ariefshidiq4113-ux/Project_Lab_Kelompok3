@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { HimaforHeader } from '@/components/himafor-header';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PRIMARY = '#1A237E';
@@ -96,16 +97,11 @@ export default function PresensiScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* ── App Header ── */}
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>⚓</Text>
-        </View>
-        <Text style={styles.headerTitle}>HIMAFOR</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <View style={styles.app}>
+        <HimaforHeader />
 
-      {/* ── Content ── */}
+        {/* ── Content ── */}
       <View style={styles.content}>
         {/* Page title with back arrow */}
         <View style={styles.pageTitleRow}>
@@ -143,16 +139,17 @@ export default function PresensiScreen() {
         </Text>
       </View>
 
-      {/* ── Cancel button ── */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.batalButton}
-          onPress={handleBatal}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Batal presensi">
-          <Text style={styles.batalText}>Batal</Text>
-        </TouchableOpacity>
+        {/* ── Cancel button ── */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.batalButton}
+            onPress={handleBatal}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Batal presensi">
+            <Text style={styles.batalText}>Batal</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -162,37 +159,14 @@ export default function PresensiScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    gap: 10,
-  },
-  logoContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    fontSize: 18,
-    color: PRIMARY,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: PRIMARY,
-    letterSpacing: 1,
+  app: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 430,
+    backgroundColor: '#FFFFFF',
   },
 
   // Content

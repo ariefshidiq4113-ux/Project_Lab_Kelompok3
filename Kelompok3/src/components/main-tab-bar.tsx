@@ -26,7 +26,7 @@ export function MainTabBar({ activePath }: { activePath: TabPath }) {
             key={tab.path}
             accessibilityRole="button"
             accessibilityState={{ selected }}
-            onPress={() => router.replace(tab.path)}
+            onPress={() => router.replace(tab.path as any)}
             style={({ pressed }) => [styles.tab, pressed && styles.pressed]}>
             <View style={[styles.iconWrap, selected && styles.iconWrapSelected]}>
               <SymbolView
