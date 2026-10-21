@@ -2,6 +2,7 @@ import * as Device from 'expo-device';
 import { Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+<<<<<<< Updated upstream
 import { AnimatedIcon } from '@/components/animated-icon';
 import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
@@ -26,6 +27,10 @@ function getDevMenuHint() {
       press <ThemedText type="code">{shortcut}</ThemedText>
     </ThemedText>
   );
+=======
+export default function IndexScreen() {
+  return <Redirect href="/beranda" />;
+>>>>>>> Stashed changes
 }
 
 export default function HomeScreen() {
