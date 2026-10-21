@@ -1,4 +1,4 @@
-import { SymbolView } from 'expo-symbols';
+import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,11 +14,7 @@ export default function PresensiDitolakScreen() {
           <View style={styles.result}>
             <View style={styles.iconOuter}>
               <View style={styles.iconInner}>
-                <SymbolView
-                  name={{ ios: 'xmark', android: 'close', web: 'close' }}
-                  size={29}
-                  tintColor="#101477"
-                />
+                <Feather name="x" size={29} color="#101477" />
               </View>
             </View>
             <Text style={styles.title}>Presensi ditolak</Text>
@@ -33,26 +29,14 @@ export default function PresensiDitolakScreen() {
               accessibilityRole="button"
               onPress={() => router.replace('/kegiatan' as any)}
               style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
-              <SymbolView
-                name={{ ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' }}
-                size={18}
-                tintColor="#FFFFFF"
-              />
+              <Feather name="rotate-ccw" size={18} color="#FFFFFF" />
               <Text style={styles.retryText}>Coba lagi</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/profil')}
               style={({ pressed }) => [styles.adminButton, pressed && styles.pressed]}>
-              <SymbolView
-                name={{
-                  ios: 'bubble.left',
-                  android: 'chat_bubble_outline',
-                  web: 'chat_bubble_outline',
-                }}
-                size={18}
-                tintColor="#101477"
-              />
+              <Feather name="message-circle" size={18} color="#101477" />
               <Text style={styles.adminText}>Hubungi admin</Text>
             </Pressable>
           </View>

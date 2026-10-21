@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import {
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import { HimaforHeader } from '@/components/himafor-header';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const PRIMARY = '#1A237E';
+const PRIMARY = '#101477';
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 type Step = 'sesi' | 'liveness' | 'cocokkan';
@@ -89,6 +92,8 @@ const stepStyles = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PresensiScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const cameraWidth = Math.min(230, width - 64);
   // Active step – update this as the flow progresses
   const [activeStep] = useState<Step>('liveness');
 
@@ -101,8 +106,10 @@ export default function PresensiScreen() {
       <View style={styles.app}>
         <HimaforHeader />
 
-        {/* ── Content ── */}
-      <View style={styles.content}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}>
         {/* Page title with back arrow */}
         <View style={styles.pageTitleRow}>
           <TouchableOpacity
@@ -110,7 +117,7 @@ export default function PresensiScreen() {
             accessibilityRole="button"
             accessibilityLabel="Kembali"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={styles.backArrow}>←</Text>
+            <Feather name="arrow-left" size={21} color={PRIMARY} />
           </TouchableOpacity>
           <Text style={styles.pageTitle}>Presensi</Text>
         </View>
@@ -123,7 +130,11 @@ export default function PresensiScreen() {
 
         {/* Camera oval */}
         <View style={styles.cameraWrapper}>
-          <View style={styles.cameraOval}>
+          <View
+            style={[
+              styles.cameraOval,
+              { width: cameraWidth, height: Math.min(280, cameraWidth * 1.22) },
+            ]}>
             <Text style={styles.cameraLabel}>Kamera depan</Text>
           </View>
         </View>
@@ -137,9 +148,8 @@ export default function PresensiScreen() {
         <Text style={styles.helperText}>
           Jangan gunakan foto atau layar. Wajah harus di dalam bingkai.
         </Text>
-      </View>
+        </ScrollView>
 
-        {/* ── Cancel button ── */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.batalButton}
@@ -168,12 +178,20 @@ const styles = StyleSheet.create({
     maxWidth: 430,
     backgroundColor: '#FFFFFF',
   },
+  scroll: {
+    flex: 1,
+    backgroundColor: '#F4F7FC',
+  },
 
   // Content
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 20,
+    paddingBottom: 24,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
 
   // Page title row
@@ -182,11 +200,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginBottom: 8,
-  },
-  backArrow: {
-    fontSize: 22,
-    color: PRIMARY,
-    fontWeight: '700',
   },
   pageTitle: {
     fontSize: 24,
@@ -207,9 +220,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   cameraOval: {
-    width: 230,
-    height: 280,
-    borderRadius: 115,
+    borderRadius: 999,
     borderWidth: 2,
     borderColor: PRIMARY,
     borderStyle: 'dashed',
@@ -249,8 +260,11 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     paddingHorizontal: 24,
-    paddingBottom: 28,
-    paddingTop: 12,
+    paddingBottom: 12,
+    paddingTop: 10,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   batalButton: {
     backgroundColor: PRIMARY,
