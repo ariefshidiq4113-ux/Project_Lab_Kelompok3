@@ -5,11 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const COLORS = {
   navy: '#101477',
-  muted: '#526487',
+  muted: '#657797',
   border: '#DCE5F0',
   background: '#F4F7FC',
-  teal: '#D8F3F0',
-  icon: '#DFEAF5',
+  tealBackground: '#DDF4F2',
+  iconBackground: '#E1ECF6',
 };
 
 const MONTHS: Record<string, string> = {
@@ -104,7 +104,7 @@ export default function DetailKegiatanScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
           <View style={styles.eventCard}>
-            <View style={styles.statusBadge}>
+            <View style={[styles.statusBadge, styles.eventStatusBadge]}>
               <Text style={styles.statusText}>{statusLabel}</Text>
             </View>
             <Text style={styles.eventTitle}>{title}</Text>
@@ -204,12 +204,14 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     minHeight: 31,
-    alignSelf: 'flex-start',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 13,
     borderRadius: 18,
-    backgroundColor: COLORS.teal,
+    backgroundColor: COLORS.tealBackground,
+  },
+  eventStatusBadge: {
+    alignSelf: 'flex-start',
   },
   statusText: {
     color: COLORS.navy,
@@ -239,7 +241,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
-    backgroundColor: COLORS.icon,
+    backgroundColor: COLORS.iconBackground,
   },
   detailText: {
     color: COLORS.navy,
