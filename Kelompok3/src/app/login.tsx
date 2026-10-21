@@ -12,14 +12,68 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+
+const PRIMARY = '#101477';
+const ERROR_COLOR = '#DC2626';
+const FOCUS_COLOR = PRIMARY;
+const BORDER_DEFAULT = '#DCE5F0';
+
+function validateEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 export default function LoginScreen() {
+  const router = useRouter();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = () => {
-    // TODO: implement login logic
+    let valid = true;
+
+    if (!email.trim()) {
+      setEmailError('Email tidak boleh kosong.');
+      valid = false;
+    } else if (!validateEmail(email.trim())) {
+      setEmailError('Format email tidak valid.');
+      valid = false;
+    } else {
+      setEmailError('');
+    }
+
+    if (!password) {
+      setPasswordError('Password tidak boleh kosong.');
+      valid = false;
+    } else if (password.length < 6) {
+      setPasswordError('Password minimal 6 karakter.');
+      valid = false;
+    } else {
+      setPasswordError('');
+    }
+
+    if (!valid) return;
+
+    // TODO: hubungkan ke auth API
+    router.replace('/beranda' as any);
   };
+
+  const emailBorderColor = emailError
+    ? ERROR_COLOR
+    : emailFocused
+      ? FOCUS_COLOR
+      : BORDER_DEFAULT;
+
+  const passwordBorderColor = passwordError
+    ? ERROR_COLOR
+    : passwordFocused
+      ? FOCUS_COLOR
+      : BORDER_DEFAULT;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -30,6 +84,7 @@ export default function LoginScreen() {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
+
           {/* Logo & Branding */}
           <View style={styles.brandSection}>
             <Image
@@ -44,16 +99,37 @@ export default function LoginScreen() {
 
           {/* Form */}
           <View style={styles.formSection}>
+
+            {/* Email field */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Email</Text>
-              <View style={styles.inputWrap}>
-                <Feather name="mail" size={18} color="#7183A2" />
+              <View
+                style={[
+                  styles.inputWrap,
+                  { borderColor: emailBorderColor },
+                  emailFocused && styles.inputWrapFocused,
+                ]}>
+                <Feather
+                  name="mail"
+                  size={18}
+                  color={emailError ? ERROR_COLOR : emailFocused ? PRIMARY : '#7183A2'}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="nama@email.com"
                   placeholderTextColor="#9CA3AF"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (emailError) setEmailError('');
+                  }}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => {
+                    setEmailFocused(false);
+                    if (email && !validateEmail(email.trim())) {
+                      setEmailError('Format email tidak valid.');
+                    }
+                  }}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -61,26 +137,65 @@ export default function LoginScreen() {
                   accessibilityLabel="Email"
                 />
               </View>
+              {emailError ? (
+                <View style={styles.errorRow}>
+                  <Feather name="alert-circle" size={13} color={ERROR_COLOR} />
+                  <Text style={styles.errorText}>{emailError}</Text>
+                </View>
+              ) : null}
             </View>
 
+            {/* Password field */}
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Password</Text>
-              <View style={styles.inputWrap}>
-                <Feather name="lock" size={18} color="#7183A2" />
+              <View
+                style={[
+                  styles.inputWrap,
+                  { borderColor: passwordBorderColor },
+                  passwordFocused && styles.inputWrapFocused,
+                ]}>
+                <Feather
+                  name="lock"
+                  size={18}
+                  color={passwordError ? ERROR_COLOR : passwordFocused ? PRIMARY : '#7183A2'}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
                   placeholderTextColor="#9CA3AF"
                   value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (passwordError) setPasswordError('');
+                  }}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  secureTextEntry={!showPassword}
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
                   accessibilityLabel="Password"
                 />
+                <TouchableOpacity
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}>
+                  <Feather
+                    name={showPassword ? 'eye-off' : 'eye'}
+                    size={18}
+                    color="#7183A2"
+                  />
+                </TouchableOpacity>
               </View>
+              {passwordError ? (
+                <View style={styles.errorRow}>
+                  <Feather name="alert-circle" size={13} color={ERROR_COLOR} />
+                  <Text style={styles.errorText}>{passwordError}</Text>
+                </View>
+              ) : null}
             </View>
 
+            {/* Login button */}
             <TouchableOpacity
               style={styles.loginButton}
               onPress={handleLogin}
@@ -100,8 +215,6 @@ export default function LoginScreen() {
   );
 }
 
-const PRIMARY = '#101477';
-
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
@@ -116,17 +229,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 48,
   },
-  formSection: {
-    width: '100%',
-    maxWidth: 440,
-    alignSelf: 'center',
-    padding: 22,
-    borderRadius: 22,
-    backgroundColor: '#F4F7FC',
-    borderWidth: 1,
-    borderColor: '#DCE5F0',
-    gap: 16,
-  },
+
+  // Branding
   brandSection: {
     alignItems: 'center',
     marginBottom: 32,
@@ -148,6 +252,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '400',
   },
+
+  // Form card
+  formSection: {
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
+    padding: 22,
+    borderRadius: 22,
+    backgroundColor: '#F4F7FC',
+    borderWidth: 1,
+    borderColor: '#DCE5F0',
+    gap: 16,
+  },
   fieldGroup: {
     gap: 6,
   },
@@ -156,28 +273,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: BORDER_DEFAULT,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    backgroundColor: '#FFFFFF',
+  },
+  inputWrapFocused: {
+    // shadow subtil saat fokus
+    shadowColor: PRIMARY,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   input: {
     flex: 1,
     paddingVertical: 13,
     fontSize: 15,
     color: '#111827',
   },
-  inputWrap: {
+  errorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#DCE5F0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    backgroundColor: '#FFFFFF',
+    gap: 5,
+    marginTop: 2,
   },
+  errorText: {
+    color: ERROR_COLOR,
+    fontSize: 12,
+  },
+
+  // Button
   loginButton: {
     backgroundColor: PRIMARY,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
   loginButtonText: {
     color: '#FFFFFF',
@@ -188,6 +325,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#6B7280',
     fontSize: 13,
-    marginTop: 4,
   },
 });
