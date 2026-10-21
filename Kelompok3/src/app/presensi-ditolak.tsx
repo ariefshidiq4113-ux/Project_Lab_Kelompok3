@@ -31,7 +31,7 @@ export default function PresensiDitolakScreen() {
           <View style={styles.actions}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.replace('/kegiatan')}
+              onPress={() => router.replace('/kegiatan' as any)}
               style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
               <SymbolView
                 name={{ ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' }}

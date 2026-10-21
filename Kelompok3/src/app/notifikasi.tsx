@@ -7,6 +7,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { HimaforHeader } from '@/components/himafor-header';
+import { MainTabBar } from '@/components/main-tab-bar';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PRIMARY = '#1A237E';
@@ -45,86 +47,6 @@ const NOTIFIKASI_DATA: Notifikasi[] = [
   },
 ];
 
-// ─── Bottom Tab Bar ───────────────────────────────────────────────────────────
-type TabName = 'beranda' | 'kegiatan' | 'riwayat' | 'profil';
-
-function BottomTabBar({ active }: { active: TabName }) {
-  const router = useRouter();
-
-  const tabs: { name: TabName; label: string; icon: string; route: string }[] = [
-    { name: 'beranda', label: 'Beranda', icon: '⌂', route: '/' },
-    { name: 'kegiatan', label: 'Kegiatan', icon: '▦', route: '/kegiatan' },
-    { name: 'riwayat', label: 'Riwayat', icon: '↺', route: '/riwayat' },
-    { name: 'profil', label: 'Profil', icon: '○', route: '/profil' },
-  ];
-
-  return (
-    <View style={tabStyles.bar}>
-      {tabs.map((tab) => {
-        const isActive = tab.name === active;
-        return (
-          <TouchableOpacity
-            key={tab.name}
-            style={tabStyles.tab}
-            onPress={() => router.push(tab.route as any)}
-            accessibilityRole="tab"
-            accessibilityLabel={tab.label}
-            accessibilityState={{ selected: isActive }}>
-            <Text style={[tabStyles.icon, isActive && tabStyles.iconActive]}>
-              {tab.icon}
-            </Text>
-            <Text style={[tabStyles.label, isActive && tabStyles.labelActive]}>
-              {tab.label}
-            </Text>
-            {isActive && <View style={tabStyles.indicator} />}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-const tabStyles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    paddingBottom: 8,
-    paddingTop: 8,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    position: 'relative',
-  },
-  icon: {
-    fontSize: 20,
-    color: '#9CA3AF',
-  },
-  iconActive: {
-    color: PRIMARY,
-  },
-  label: {
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  labelActive: {
-    color: PRIMARY,
-    fontWeight: '600',
-  },
-  indicator: {
-    position: 'absolute',
-    bottom: -8,
-    height: 2,
-    width: '60%',
-    backgroundColor: PRIMARY,
-    borderRadius: 2,
-  },
-});
-
 // ─── Notification Card ────────────────────────────────────────────────────────
 function NotifCard({ item }: { item: Notifikasi }) {
   // The first item (type === 'sesi') uses the teal highlight style
@@ -155,16 +77,11 @@ export default function NotifikasiScreen() {
   const router = useRouter();
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>⚓</Text>
-        </View>
-        <Text style={styles.headerTitle}>HIMAFOR</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <View style={styles.app}>
+        <HimaforHeader />
 
-      {/* ── Page title with back button ── */}
+        {/* ── Page title with back button ── */}
       <View style={styles.pageTitleRow}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -188,8 +105,9 @@ export default function NotifikasiScreen() {
         }
       />
 
-      {/* ── Bottom Tab Bar ── */}
-      <BottomTabBar active="beranda" />
+        {/* ── Bottom Tab Bar ── */}
+        <MainTabBar activePath="/beranda" />
+      </View>
     </SafeAreaView>
   );
 }
@@ -198,37 +116,14 @@ export default function NotifikasiScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    gap: 10,
-  },
-  logoContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    fontSize: 18,
-    color: PRIMARY,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: PRIMARY,
-    letterSpacing: 1,
+  app: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 430,
+    backgroundColor: '#FFFFFF',
   },
 
   // Page title row
