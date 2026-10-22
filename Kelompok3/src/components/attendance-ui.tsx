@@ -46,6 +46,8 @@ export type Activity = {
   date: string;
   time: string;
   state: 'open' | 'not-open' | 'completed';
+  venue?: string;
+  agenda?: string;
 };
 
 const ACTIVITY_STATUS = {

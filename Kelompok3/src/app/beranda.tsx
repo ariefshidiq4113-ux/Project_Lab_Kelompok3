@@ -1,21 +1,21 @@
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MainScreen } from '@/components/main-screen';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const UPCOMING = [
-  { title: 'Rapat Pengurus HIMAFOR', date: '08 Okt 2026', time: '19:00', open: true },
-  { title: 'Evaluasi Program Kerja', date: '10 Okt 2026', time: '19:30', open: false },
-];
-
 const COLORS = {
   navy: '#101477',
-  muted: '#7183A2',
+  muted: '#657797',
   border: '#DCE5F0',
   teal: '#39BFB7',
-  blue: '#3289D1',
+  background: '#F4F7FC',
 };
+
+const UPCOMING_ACTIVITIES = [
+  { title: 'Evaluasi Program Kerja', date: '10 Okt 2026' },
+  { title: 'Workshop UI/UX Design', date: '20 Okt 2026' },
+];
 
 export default function BerandaScreen() {
   return (
@@ -24,60 +24,67 @@ export default function BerandaScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-
-        {/* Greeting */}
-        <Text style={styles.greeting}>Halo, Anggota 👋</Text>
-        <Text style={styles.subGreeting}>Selamat datang di HIMAFOR Attendance</Text>
-
-        {/* Upcoming sessions */}
-        <Text style={styles.sectionTitle}>Kegiatan mendatang</Text>
-        {UPCOMING.map((item) => (
-          <Pressable
-            key={item.title}
-            accessibilityRole="button"
-            accessibilityLabel={item.title}
-            onPress={() => (router as any).push('/kegiatan')}
-            style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-            <View style={styles.cardLeft}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardMeta}>{item.date} · {item.time}</Text>
+        <View style={styles.greetingSection}>
+          <View style={styles.greetingRow}>
+            <Text style={styles.greeting}>Halo, [Nama]</Text>
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleText}>[Role]</Text>
             </View>
-            {item.open && (
-              <View style={styles.openBadge}>
-                <Text style={styles.openBadgeText}>Dibuka</Text>
-              </View>
-            )}
-          </Pressable>
-        ))}
+          </View>
+        </View>
 
-        {/* Quick links */}
-        <Text style={styles.sectionTitle}>Menu cepat</Text>
-        <View style={styles.quickRow}>
+        <View style={styles.attendanceCard}>
+          <Text style={styles.cardHeading}>Kehadiran</Text>
+          <View style={styles.statsRow}>
+            <View style={[styles.statTile, styles.presentTile]}>
+              <Text style={styles.statNumber}>5</Text>
+              <Text style={styles.statLabel}>Hadir</Text>
+            </View>
+            <View style={[styles.statTile, styles.absentTile]}>
+              <Text style={styles.statNumber}>2</Text>
+              <Text style={styles.statLabel}>Tidak hadir</Text>
+            </View>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionHeading, styles.todayHeading]}>Kegiatan hari ini</Text>
+        <View style={styles.todayCard}>
+          <Text style={styles.todayTitle}>Rapat Pengurus HIMAFOR</Text>
+          <View style={styles.todayMeta}>
+            <View style={styles.tealDot} />
+            <Text style={styles.todayDate}>08 Okt 2026 · 19:00–21:00</Text>
+          </View>
           <Pressable
-            style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}
-            onPress={() => (router as any).push('/riwayat')}
             accessibilityRole="button"
-            accessibilityLabel="Riwayat presensi">
-            <Text style={styles.quickIcon}>📋</Text>
-            <Text style={styles.quickLabel}>Riwayat</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}
-            onPress={() => (router as any).push('/notifikasi')}
-            accessibilityRole="button"
-            accessibilityLabel="Notifikasi">
-            <Text style={styles.quickIcon}>🔔</Text>
-            <Text style={styles.quickLabel}>Notifikasi</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}
-            onPress={() => (router as any).push('/profil')}
-            accessibilityRole="button"
-            accessibilityLabel="Profil">
-            <Text style={styles.quickIcon}>👤</Text>
-            <Text style={styles.quickLabel}>Profil</Text>
+            onPress={() => router.push('/presensi')}
+            style={({ pressed }) => [styles.attendanceButton, pressed && styles.pressed]}>
+            <Text style={styles.attendanceButtonText}>PRESENSI</Text>
           </Pressable>
         </View>
+
+        <Text style={[styles.sectionHeading, styles.upcomingHeading]}>Kegiatan mendatang</Text>
+        {UPCOMING_ACTIVITIES.map((activity) => (
+          <Pressable
+            key={activity.title}
+            accessibilityRole="button"
+            accessibilityLabel={`${activity.title}, ${activity.date}`}
+            onPress={() => router.push('/kegiatan')}
+            style={({ pressed }) => [styles.upcomingCard, pressed && styles.pressed]}>
+            <View style={styles.calendarTile}>
+              <SymbolView
+                name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }}
+                size={23}
+                tintColor={COLORS.navy}
+              />
+            </View>
+            <View style={styles.upcomingCopy}>
+              <Text style={styles.upcomingTitle} numberOfLines={1}>
+                {activity.title}
+              </Text>
+              <Text style={styles.upcomingDate}>{activity.date}</Text>
+            </View>
+          </Pressable>
+        ))}
       </ScrollView>
     </MainScreen>
   );
@@ -86,89 +93,182 @@ export default function BerandaScreen() {
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
-    backgroundColor: '#F4F7FC',
+    backgroundColor: COLORS.background,
   },
   content: {
-    paddingTop: 24,
+    paddingBottom: 20,
+  },
+  greetingSection: {
+    height: 112,
     paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingTop: 25,
+    backgroundColor: '#FFFFFF',
   },
-  greeting: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.navy,
-    marginBottom: 4,
-  },
-  subGreeting: {
-    fontSize: 13,
-    color: COLORS.muted,
-    marginBottom: 28,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.navy,
-    marginBottom: 12,
-  },
-  card: {
+  greetingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
   },
-  cardLeft: {
-    flex: 1,
-    gap: 4,
+  greeting: {
+    color: COLORS.navy,
+    fontSize: 24,
+    lineHeight: 31,
+    fontWeight: '800',
   },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#20334F',
+  roleBadge: {
+    borderRadius: 18,
+    backgroundColor: '#DDEAF5',
+    paddingHorizontal: 13,
+    paddingVertical: 6,
   },
-  cardMeta: {
+  roleText: {
+    color: COLORS.navy,
     fontSize: 12,
-    color: COLORS.muted,
+    lineHeight: 16,
+    fontWeight: '700',
   },
-  openBadge: {
-    backgroundColor: '#E3F6F4',
+  attendanceCard: {
+    padding: 18,
+    marginHorizontal: 20,
+    marginTop: -40,
+    marginBottom: 25,
     borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginLeft: 10,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#172653',
+    shadowOpacity: 0.1,
+    shadowRadius: 13,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
-  openBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#008B88',
+  cardHeading: {
+    marginBottom: 13,
+    color: COLORS.navy,
+    fontSize: 15,
+    fontWeight: '700',
   },
-  quickRow: {
+  statsRow: {
     flexDirection: 'row',
     gap: 12,
   },
-  quickCard: {
+  statTile: {
+    height: 62,
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    borderRadius: 13,
+  },
+  presentTile: {
+    backgroundColor: '#DDF4F2',
+  },
+  absentTile: {
+    backgroundColor: '#E5EEF5',
+  },
+  statNumber: {
+    color: COLORS.navy,
+    fontSize: 27,
+    lineHeight: 32,
+    fontWeight: '800',
+  },
+  statLabel: {
+    color: COLORS.navy,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  sectionHeading: {
+    paddingHorizontal: 20,
+    color: COLORS.navy,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  todayHeading: {
+    marginBottom: 12,
+  },
+  todayCard: {
+    padding: 17,
+    marginHorizontal: 20,
+    marginBottom: 26,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 14,
-    alignItems: 'center',
-    paddingVertical: 18,
-    gap: 8,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
   },
-  quickIcon: {
-    fontSize: 24,
-  },
-  quickLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+  todayTitle: {
     color: COLORS.navy,
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: '700',
+  },
+  todayMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 18,
+  },
+  tealDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: COLORS.teal,
+  },
+  todayDate: {
+    color: COLORS.muted,
+    fontSize: 12,
+  },
+  attendanceButton: {
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: COLORS.navy,
+  },
+  attendanceButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  upcomingHeading: {
+    marginBottom: 12,
+  },
+  upcomingCard: {
+    minHeight: 80,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  calendarTile: {
+    width: 43,
+    height: 43,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#E1ECF6',
+  },
+  upcomingCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  upcomingTitle: {
+    color: COLORS.navy,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  upcomingDate: {
+    color: COLORS.muted,
+    fontSize: 12,
   },
   pressed: {
-    opacity: 0.78,
+    opacity: 0.75,
   },
 });
