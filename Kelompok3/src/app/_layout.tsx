@@ -29,10 +29,10 @@ export default function RootLayout() {
         <Stack.Screen name="notifikasi-detail" options={{ headerShown: false }} />
         <Stack.Screen name="presensi" options={{ headerShown: false }} />
         <Stack.Screen name="explore" options={{ headerShown: false }} />
-        <Stack.Screen name="anggotafix" options={{ headerShown: false }} />
-        <Stack.Screen name="kegiatanfix" options={{ headerShown: false }} />
-        <Stack.Screen name="presensifix" options={{ headerShown: false }} />
-        <Stack.Screen name="rekapfix" options={{ headerShown: false }} />
+        <Stack.Screen name="anggota_admin" options={{ headerShown: false }} />
+        <Stack.Screen name="kegiatan_admin" options={{ headerShown: false }} />
+        <Stack.Screen name="presensi_admin" options={{ headerShown: false }} />
+        <Stack.Screen name="rekap_admin" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
   );

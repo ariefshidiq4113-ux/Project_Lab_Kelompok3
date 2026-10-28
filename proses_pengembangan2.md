@@ -2,7 +2,7 @@
 # ABSENSI PINTAR HIMAFOR
 
 ## 1. Deskripsi Aplikasi
-**Absensi Pintar HIMAFOR** merupakan aplikasi absensi digital yang dirancang untuk membantu proses pencatatan kehadiran anggota HIMAFOR dalam kegiatan organisasi. Aplikasi ini menyediakan antarmuka untuk melakukan login, aktivasi wajah, melihat informasi kegiatan, melakukan presensi, memeriksa riwayat kehadiran, serta mengelola profil dan notifikasi.
+**Absensi Pintar HIMAFOR** merupakan aplikasi absensi digital yang dirancang untuk membantu proses pencatatan kehadiran anggota HIMAFOR dalam kegiatan organisasi. Aplikasi ini menyediakan antarmuka untuk melakukan login, aktivasi wajah, melihat informasi kegiatan, melakukan presensi, memeriksa riwayat kehadiran, serta mengelola profil dan.
 Aplikasi ini juga menyediakan halaman admin untuk membantu pengelolaan data dan kebutuhan administrasi sistem absensi.
 Pengembangan aplikasi berfokus pada kemudahan penggunaan, tampilan antarmuka yang mudah dipahami, dan proses presensi yang lebih praktis.
 
