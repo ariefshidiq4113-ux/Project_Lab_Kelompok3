@@ -25,6 +25,7 @@ export default function RootLayout() {
         <Stack.Screen name="detail-kegiatan" options={{ headerShown: false }} />
         <Stack.Screen name="riwayat" options={{ headerShown: false }} />
         <Stack.Screen name="profil" options={{ headerShown: false }} />
+        <Stack.Screen name="ubah-password" options={{ headerShown: false }} />
         <Stack.Screen name="notifikasi" options={{ headerShown: false }} />
         <Stack.Screen name="presensi" options={{ headerShown: false }} />
         <Stack.Screen name="explore" options={{ headerShown: false }} />

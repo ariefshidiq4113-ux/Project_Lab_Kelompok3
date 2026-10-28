@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 import { MainScreen } from '@/components/main-screen';
 
@@ -27,8 +28,17 @@ export default function BerandaScreen() {
         <View style={styles.greetingSection}>
           <View style={styles.greetingRow}>
             <Text style={styles.greeting}>Halo, [Nama]</Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>[Role]</Text>
+            <View className="flex-row items-center gap-2">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Buka notifikasi"
+                onPress={() => router.push('/notifikasi')}
+                className="h-10 w-10 items-center justify-center rounded-full border border-line bg-white active:opacity-70">
+                <Feather name="bell" size={19} color={COLORS.navy} />
+              </Pressable>
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>[Role]</Text>
+              </View>
             </View>
           </View>
         </View>

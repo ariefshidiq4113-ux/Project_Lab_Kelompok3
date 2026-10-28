@@ -32,8 +32,7 @@ export default function ProfilScreen() {
   };
 
   const handleUbahPassword = () => {
-    // TODO: navigate to change-password screen
-    Alert.alert('Ubah Password', 'Fitur ini akan segera tersedia.');
+    router.push('/ubah-password');
   };
 
   const handleKeluar = () => {
