@@ -1,12 +1,14 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 const PRIMARY = '#1A237E';
 const TEAL = '#26C6B0';
 
 export default function PresensiTercatatScreen() {
+  const router = useRouter();
   const handleSelesai = () => {
-    // TODO: navigate back to home or dashboard
+    router.replace('/beranda' as any);
   };
 
   return (
