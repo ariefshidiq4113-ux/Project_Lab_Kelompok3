@@ -163,15 +163,16 @@ export default function LoginScreen() {
                   value={email}
                   onChangeText={(text) => {
                     setEmail(text);
-                    if (emailError) setEmailError('');
-                  }}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => {
-                    setEmailFocused(false);
-                    if (email && !validateEmail(email.trim())) {
+                    if (!text.trim()) {
+                      setEmailError('Email tidak boleh kosong.');
+                    } else if (!validateEmail(text.trim())) {
                       setEmailError('Format email tidak valid.');
+                    } else {
+                      setEmailError('');
                     }
                   }}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -204,7 +205,13 @@ export default function LoginScreen() {
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
-                    if (passwordError) setPasswordError('');
+                    if (!text) {
+                      setPasswordError('Password tidak boleh kosong.');
+                    } else if (text.length < 6) {
+                      setPasswordError('Password minimal 6 karakter.');
+                    } else {
+                      setPasswordError('');
+                    }
                   }}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
