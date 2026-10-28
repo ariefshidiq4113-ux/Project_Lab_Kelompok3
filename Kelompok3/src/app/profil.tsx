@@ -5,21 +5,20 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { HimaforHeader } from '@/components/himafor-header';
-import { MainTabBar } from '@/components/main-tab-bar';
+import { Feather } from '@expo/vector-icons';
+import { MainScreen } from '@/components/main-screen';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const PRIMARY = '#1A237E';
-const TEAL = '#26A69A';
+const PRIMARY = '#101477';
+const TEAL = '#39BFB7';
 
 // ─── Mock data – replace with real auth/user context ─────────────────────────
 const USER = {
   name: 'Nama Anggota',
   email: 'anggota@email.com',
-  initial: 'H',
   faceRegistered: true,
 };
 
@@ -49,19 +48,18 @@ export default function ProfilScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.app}>
-        <HimaforHeader />
-
-        {/* ── Content ── */}
-      <View style={styles.content}>
+    <MainScreen activePath="/profil">
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}>
         {/* Page title */}
         <Text style={styles.pageTitle}>Profil</Text>
 
         {/* Avatar */}
         <View style={styles.avatarSection}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user.initial}</Text>
+            <Feather name="user" size={36} color="#FFFFFF" />
           </View>
           <Text style={styles.userName}>{user.name}</Text>
           <Text style={styles.userEmail}>{user.email}</Text>
@@ -73,6 +71,7 @@ export default function ProfilScreen() {
             <Text style={styles.faceCardTitle}>Data wajah</Text>
             <Text style={styles.faceCardSub}>Untuk verifikasi presensi</Text>
           </View>
+          <Feather name="maximize" size={20} color={PRIMARY} />
           <View
             style={[
               styles.statusBadge,
@@ -91,54 +90,48 @@ export default function ProfilScreen() {
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Perbarui wajah">
+          <Feather name="user-check" size={18} color="#FFFFFF" />
           <Text style={styles.actionButtonText}>Perbarui wajah</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, styles.secondaryActionButton]}
           onPress={handleUbahPassword}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Ubah password">
-          <Text style={styles.actionButtonText}>Ubah password</Text>
+          <Feather name="lock" size={18} color={PRIMARY} />
+          <Text style={[styles.actionButtonText, styles.secondaryActionText]}>Ubah password</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, styles.dangerActionButton]}
           onPress={handleKeluar}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Keluar">
-          <Text style={styles.actionButtonText}>Keluar</Text>
+          <Feather name="log-out" size={18} color="#B42336" />
+          <Text style={[styles.actionButtonText, styles.dangerActionText]}>Keluar</Text>
         </TouchableOpacity>
-      </View>
-
-        {/* ── Bottom Tab Bar ── */}
-        <MainTabBar activePath="/profil" />
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </MainScreen>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  app: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 430,
-    backgroundColor: '#FFFFFF',
-  },
-
   // Content
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    backgroundColor: '#F4F7FC',
+  },
+  contentContainer: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 28,
   },
   pageTitle: {
     fontSize: 24,
@@ -161,11 +154,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
-  },
-  avatarText: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   userName: {
     fontSize: 17,
@@ -220,11 +208,30 @@ const styles = StyleSheet.create({
 
   // Action buttons
   actionButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 9,
     backgroundColor: PRIMARY,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 14,
+  },
+  secondaryActionButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DCE5F0',
+  },
+  dangerActionButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DCE5F0',
+  },
+  secondaryActionText: {
+    color: PRIMARY,
+  },
+  dangerActionText: {
+    color: '#B42336',
   },
   actionButtonText: {
     color: '#FFFFFF',

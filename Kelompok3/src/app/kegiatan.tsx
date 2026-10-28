@@ -9,7 +9,15 @@ const FILTERS = ['Semua', 'Hari ini', 'Selesai'] as const;
 type ActivityFilter = (typeof FILTERS)[number];
 
 const ACTIVITIES: Activity[] = [
-  { title: 'Rapat Pengurus', date: '08 Okt 2026', time: '19:00 - 21:00', state: 'open' },
+  {
+    title: 'Rapat Pengurus HIMAFOR',
+    date: '08 Okt 2026',
+    time: '19:00 - 21:00',
+    state: 'open',
+    venue: 'Sekre HIMAFOR',
+    agenda:
+      'Evaluasi kegiatan bulan ini berjalan dan persiapan program kerja berikutnya.',
+  },
   {
     title: 'Evaluasi Program Kerja',
     date: '10 Okt 2026',
@@ -53,7 +61,19 @@ export default function KegiatanScreen() {
             <ActivityCard
               key={activity.title}
               activity={activity}
-              onPress={() => router.push('/presensi-ditolak' as any)}
+              onPress={() =>
+                router.push({
+                  pathname: '/detail-kegiatan',
+                  params: {
+                    title: activity.title,
+                    date: activity.date,
+                    time: activity.time,
+                    state: activity.state,
+                    venue: activity.venue ?? '',
+                    agenda: activity.agenda ?? '',
+                  },
+                })
+              }
             />
           ))}
         </View>

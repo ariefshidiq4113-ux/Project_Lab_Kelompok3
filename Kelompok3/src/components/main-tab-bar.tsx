@@ -1,17 +1,16 @@
-import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 const TABS = [
-  { label: 'Beranda', path: '/beranda', iosSymbol: 'house', androidSymbol: 'home' },
-  { label: 'Kegiatan', path: '/kegiatan', iosSymbol: 'calendar', androidSymbol: 'calendar_month' },
+  { label: 'Beranda', path: '/beranda', icon: 'home' },
+  { label: 'Kegiatan', path: '/kegiatan', icon: 'calendar' },
   {
     label: 'Riwayat',
     path: '/riwayat',
-    iosSymbol: 'clock.arrow.circlepath',
-    androidSymbol: 'history',
+    icon: 'clock',
   },
-  { label: 'Profil', path: '/profil', iosSymbol: 'person', androidSymbol: 'person' },
+  { label: 'Profil', path: '/profil', icon: 'user' },
 ] as const;
 
 type TabPath = (typeof TABS)[number]['path'];
@@ -26,20 +25,20 @@ export function MainTabBar({ activePath }: { activePath: TabPath }) {
             key={tab.path}
             accessibilityRole="button"
             accessibilityState={{ selected }}
-            onPress={() => router.replace(tab.path as any)}
+            onPress={() => {
+              if (!selected) router.replace(tab.path);
+            }}
             style={({ pressed }) => [styles.tab, pressed && styles.pressed]}>
             <View style={[styles.iconWrap, selected && styles.iconWrapSelected]}>
-              <SymbolView
-                name={{
-                  ios: tab.iosSymbol,
-                  android: tab.androidSymbol,
-                  web: tab.androidSymbol,
-                }}
-                size={21}
-                tintColor={selected ? '#3289D1' : '#7183A2'}
+              <Feather
+                name={tab.icon}
+                size={20}
+                color={selected ? '#101477' : '#7183A2'}
               />
             </View>
-            <Text style={[styles.label, selected && styles.labelSelected]}>{tab.label}</Text>
+            <Text numberOfLines={1} style={[styles.label, selected && styles.labelSelected]}>
+              {tab.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -49,24 +48,27 @@ export function MainTabBar({ activePath }: { activePath: TabPath }) {
 
 const styles = StyleSheet.create({
   bar: {
-    height: 72,
+    minHeight: 68,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     borderTopWidth: 1,
     borderTopColor: '#DCE5F0',
     backgroundColor: '#FFFFFF',
+    paddingHorizontal: 6,
+    paddingBottom: 4,
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    height: '100%',
+    minHeight: 60,
+    paddingHorizontal: 2,
   },
   iconWrap: {
-    width: 54,
-    height: 28,
+    minWidth: 48,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
@@ -78,6 +80,7 @@ const styles = StyleSheet.create({
     color: '#7183A2',
     fontSize: 10,
     lineHeight: 14,
+    textAlign: 'center',
   },
   labelSelected: {
     color: '#3289D1',

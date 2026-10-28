@@ -1,4 +1,4 @@
-import { SymbolView } from 'expo-symbols';
+import { Feather } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 const COLORS = {
@@ -46,6 +46,8 @@ export type Activity = {
   date: string;
   time: string;
   state: 'open' | 'not-open' | 'completed';
+  venue?: string;
+  agenda?: string;
 };
 
 const ACTIVITY_STATUS = {
@@ -70,37 +72,25 @@ export function ActivityCard({
       style={({ pressed }) => [styles.activityCard, pressed && styles.pressed]}>
       <View style={styles.activityHeader}>
         <View style={[styles.calendarTile, activity.state === 'open' && styles.calendarTileOpen]}>
-          <SymbolView
-            name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }}
+          <Feather
+            name="calendar"
             size={19}
-            tintColor={activity.state === 'open' ? COLORS.blue : COLORS.muted}
+            color={activity.state === 'open' ? COLORS.blue : COLORS.muted}
           />
         </View>
         <Text style={styles.activityTitle} numberOfLines={1}>
           {activity.title}
         </Text>
-        <SymbolView
-          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-          size={14}
-          tintColor={COLORS.muted}
-        />
+        <Feather name="chevron-right" size={16} color={COLORS.muted} />
       </View>
 
       <View style={styles.metadata}>
         <View style={styles.metadataItem}>
-          <SymbolView
-            name={{ ios: 'calendar', android: 'calendar_today', web: 'calendar_today' }}
-            size={13}
-            tintColor={COLORS.muted}
-          />
+          <Feather name="calendar" size={14} color={COLORS.muted} />
           <Text style={styles.metadataText}>{activity.date}</Text>
         </View>
         <View style={styles.metadataItem}>
-          <SymbolView
-            name={{ ios: 'clock', android: 'access_time', web: 'access_time' }}
-            size={14}
-            tintColor={COLORS.muted}
-          />
+          <Feather name="clock" size={14} color={COLORS.muted} />
           <Text style={styles.metadataText}>{activity.time}</Text>
         </View>
       </View>
@@ -134,14 +124,10 @@ export function HistoryCard({ record }: { record: AttendanceRecord }) {
           styles.badge,
           record.present ? styles.presentBadge : styles.absentBadge,
         ]}>
-        <SymbolView
-          name={{
-            ios: record.present ? 'checkmark' : 'minus',
-            android: record.present ? 'check' : 'remove',
-            web: record.present ? 'check' : 'remove',
-          }}
+        <Feather
+          name={record.present ? 'check' : 'minus'}
           size={12}
-          tintColor={record.present ? '#008B88' : COLORS.navy}
+          color={record.present ? '#008B88' : COLORS.navy}
         />
         <Text
           style={[
