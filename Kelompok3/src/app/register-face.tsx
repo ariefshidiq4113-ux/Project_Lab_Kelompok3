@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -10,10 +9,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { HimaforHeader } from '@/components/himafor-header';
-import {  useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 
-const PRIMARY = '#101477';
-const TEAL = '#39BFB7';
+/** Hex untuk prop warna ikon (mirror tailwind.config.js). */
+const ICON = {
+  navy: '#101477',
+} as const;
+
 const TOTAL_SAMPLES = 5;
 
 const POSE_INSTRUCTIONS = [
@@ -27,15 +29,16 @@ const POSE_INSTRUCTIONS = [
 export default function RegisterFaceScreen() {
   const { width } = useWindowDimensions();
   const cameraWidth = Math.min(220, width - 64);
+  const cameraHeight = Math.min(260, cameraWidth * 1.18);
   const [currentSample, setCurrentSample] = useState(2); // 0-indexed, tampil "Sampel 3 dari 5"
-  const router = useRouter()
+  const router = useRouter();
 
   const handleTakeSample = () => {
     if (currentSample < TOTAL_SAMPLES - 1) {
       setCurrentSample((prev) => prev + 1);
     }
-    if(currentSample===4){
-        router.replace("/beranda")
+    if (currentSample === 4) {
+      router.replace('/beranda');
     }
   };
 
@@ -43,191 +46,68 @@ export default function RegisterFaceScreen() {
   const poseInstruction = POSE_INSTRUCTIONS[currentSample] ?? '';
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <HimaforHeader role="Anggota" />
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        className="flex-1 bg-surface"
+        contentContainerClassName="w-full max-w-[640px] flex-grow items-center self-center px-6 pt-6"
         showsVerticalScrollIndicator={false}>
         {/* Page title */}
-        <Text style={styles.pageTitle}>Daftarkan wajah</Text>
+        <Text className="mb-5 w-full self-start text-2xl font-extrabold text-navy">
+          Daftarkan wajah
+        </Text>
 
         {/* Info card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoIconContainer}>
-            <Feather name="maximize" size={19} color={PRIMARY} />
+        <View className="mb-8 w-full flex-row items-center gap-3 rounded-[14px] bg-info-soft p-4">
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-info-icon">
+            <Feather name="maximize" size={19} color={ICON.navy} />
           </View>
-          <Text style={styles.infoText}>
+          <Text className="flex-1 text-[13px] leading-5 text-body">
             Hanya sekali, setelah login pertama.{'\n'}
             Dibutuhkan 5 sampel dari sudut berbeda.
           </Text>
         </View>
 
         {/* Camera oval preview */}
-        <View style={styles.cameraContainer}>
+        <View className="mb-7 items-center justify-center">
           <View
-            style={[
-              styles.ovalOuter,
-              { width: cameraWidth, height: Math.min(260, cameraWidth * 1.18) },
-            ]}>
-            <Text style={styles.cameraPlaceholderText}>Pratinjau kamera</Text>
+            className="items-center justify-center rounded-full border-[2.5px] border-dashed border-info-ring bg-info-preview"
+            style={{ width: cameraWidth, height: cameraHeight }}>
+            <Text className="text-sm text-placeholder">Pratinjau kamera</Text>
           </View>
         </View>
 
         {/* Progress dots */}
-        <View style={styles.dotsRow}>
+        <View className="mb-3 flex-row gap-2.5">
           {Array.from({ length: TOTAL_SAMPLES }).map((_, i) => (
             <View
               key={i}
-              style={[
-                styles.dot,
-                i <= currentSample ? styles.dotFilled : styles.dotEmpty,
-              ]}
+              className={
+                i <= currentSample
+                  ? 'h-3 w-3 rounded-full bg-teal'
+                  : 'h-3 w-3 rounded-full border-[1.5px] border-placeholder bg-transparent'
+              }
             />
           ))}
         </View>
 
         {/* Instruction text */}
-        <Text style={styles.instructionText}>
+        <Text className="text-center text-[13px] text-subtle">
           {sampelLabel} · {poseInstruction}
         </Text>
       </ScrollView>
 
       {/* Bottom CTA */}
-      <View style={styles.footer}>
+      <View className="w-full max-w-[640px] self-center px-6 pb-3 pt-2.5">
         <TouchableOpacity
-          style={styles.ctaButton}
+          className="items-center rounded-[14px] bg-teal py-[18px] active:opacity-80"
           onPress={handleTakeSample}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Ambil sampel">
-          <Text style={styles.ctaText}>Ambil sampel</Text>
+          <Text className="text-base font-extrabold text-white">Ambil sampel</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-
-  scroll: {
-    flex: 1,
-    backgroundColor: '#F4F7FC',
-  },
-
-  // Content
-  content: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: 640,
-    alignSelf: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    alignItems: 'center',
-  },
-  pageTitle: {
-    alignSelf: 'flex-start',
-    color: PRIMARY,
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 20,
-  },
-
-  // Info card
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EBF4FF',
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-    width: '100%',
-    marginBottom: 32,
-  },
-  infoIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoText: {
-    flex: 1,
-    color: '#374151',
-    fontSize: 13,
-    lineHeight: 20,
-  },
-
-  // Camera oval
-  cameraContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 28,
-  },
-  ovalOuter: {
-    borderRadius: 999,
-    borderWidth: 2.5,
-    borderColor: '#60A5FA',
-    borderStyle: 'dashed',
-    backgroundColor: '#EBF5FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cameraPlaceholderText: {
-    color: '#9CA3AF',
-    fontSize: 14,
-  },
-
-  // Dots
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  dotFilled: {
-    backgroundColor: TEAL,
-  },
-  dotEmpty: {
-    borderWidth: 1.5,
-    borderColor: '#9CA3AF',
-    backgroundColor: 'transparent',
-  },
-
-  // Instruction
-  instructionText: {
-    color: '#6B7280',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-
-  // Footer
-  footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 12,
-    paddingTop: 10,
-    width: '100%',
-    maxWidth: 640,
-    alignSelf: 'center',
-  },
-  ctaButton: {
-    backgroundColor: TEAL,
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
-  ctaText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-});
