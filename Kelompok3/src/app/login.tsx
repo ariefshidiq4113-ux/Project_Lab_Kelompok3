@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -14,10 +13,13 @@ import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-const PRIMARY = '#101477';
-const ERROR_COLOR = '#DC2626';
-const FOCUS_COLOR = PRIMARY;
-const BORDER_DEFAULT = '#DCE5F0';
+/** Hex untuk prop warna ikon (mirror tailwind.config.js). */
+const ICON = {
+  navy: '#101477',
+  muted: '#7183A2',
+  danger: '#DC2626',
+  placeholder: '#9CA3AF',
+} as const;
 
 function validateEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -63,61 +65,61 @@ export default function LoginScreen() {
     router.replace('/beranda' as any);
   };
 
-  const emailBorderColor = emailError
-    ? ERROR_COLOR
+  const emailBorderClass = emailError
+    ? 'border-danger'
     : emailFocused
-      ? FOCUS_COLOR
-      : BORDER_DEFAULT;
+      ? 'border-navy shadow-sm shadow-navy/20'
+      : 'border-line';
 
-  const passwordBorderColor = passwordError
-    ? ERROR_COLOR
+  const passwordBorderClass = passwordError
+    ? 'border-danger'
     : passwordFocused
-      ? FOCUS_COLOR
-      : BORDER_DEFAULT;
+      ? 'border-navy shadow-sm shadow-navy/20'
+      : 'border-line';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView className="flex-1 bg-white">
       <KeyboardAvoidingView
-        style={styles.flex}
+        className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
-          contentContainerStyle={styles.container}
+          contentContainerClassName="flex-grow justify-center px-6 py-12"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
 
           {/* Logo & Branding */}
-          <View style={styles.brandSection}>
+          <View className="mb-8 items-center">
             <Image
               source={require('@/assets/images/himafor-logo.png')}
-              style={styles.logo}
+              style={{ width: 76, height: 76, marginBottom: 16 }}
               contentFit="contain"
               accessibilityLabel="Logo HIMAFOR"
             />
-            <Text style={styles.appName}>HIMAFOR</Text>
-            <Text style={styles.subtitle}>Attendance System</Text>
+            <Text className="mb-1 text-[28px] font-extrabold tracking-wide text-navy">
+              HIMAFOR
+            </Text>
+            <Text className="text-[15px] font-normal text-subtle">
+              Attendance System
+            </Text>
           </View>
 
           {/* Form */}
-          <View style={styles.formSection}>
+          <View className="w-full max-w-[440px] self-center gap-4 rounded-[22px] border border-line bg-surface p-[22px]">
 
             {/* Email field */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Email</Text>
+            <View className="gap-1.5">
+              <Text className="text-sm font-bold text-navy">Email</Text>
               <View
-                style={[
-                  styles.inputWrap,
-                  { borderColor: emailBorderColor },
-                  emailFocused && styles.inputWrapFocused,
-                ]}>
+                className={`flex-row items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3.5 ${emailBorderClass}`}>
                 <Feather
                   name="mail"
                   size={18}
-                  color={emailError ? ERROR_COLOR : emailFocused ? PRIMARY : '#7183A2'}
+                  color={emailError ? ICON.danger : emailFocused ? ICON.navy : ICON.muted}
                 />
                 <TextInput
-                  style={styles.input}
+                  className="flex-1 py-[13px] text-[15px] text-ink-dark"
                   placeholder="nama@email.com"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={ICON.placeholder}
                   value={email}
                   onChangeText={(text) => {
                     setEmail(text);
@@ -138,31 +140,27 @@ export default function LoginScreen() {
                 />
               </View>
               {emailError ? (
-                <View style={styles.errorRow}>
-                  <Feather name="alert-circle" size={13} color={ERROR_COLOR} />
-                  <Text style={styles.errorText}>{emailError}</Text>
+                <View className="mt-0.5 flex-row items-center gap-1.5">
+                  <Feather name="alert-circle" size={13} color={ICON.danger} />
+                  <Text className="text-xs text-danger">{emailError}</Text>
                 </View>
               ) : null}
             </View>
 
             {/* Password field */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Password</Text>
+            <View className="gap-1.5">
+              <Text className="text-sm font-bold text-navy">Password</Text>
               <View
-                style={[
-                  styles.inputWrap,
-                  { borderColor: passwordBorderColor },
-                  passwordFocused && styles.inputWrapFocused,
-                ]}>
+                className={`flex-row items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3.5 ${passwordBorderClass}`}>
                 <Feather
                   name="lock"
                   size={18}
-                  color={passwordError ? ERROR_COLOR : passwordFocused ? PRIMARY : '#7183A2'}
+                  color={passwordError ? ICON.danger : passwordFocused ? ICON.navy : ICON.muted}
                 />
                 <TextInput
-                  style={styles.input}
+                  className="flex-1 py-[13px] text-[15px] text-ink-dark"
                   placeholder="Password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={ICON.placeholder}
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
@@ -183,29 +181,29 @@ export default function LoginScreen() {
                   <Feather
                     name={showPassword ? 'eye-off' : 'eye'}
                     size={18}
-                    color="#7183A2"
+                    color={ICON.muted}
                   />
                 </TouchableOpacity>
               </View>
               {passwordError ? (
-                <View style={styles.errorRow}>
-                  <Feather name="alert-circle" size={13} color={ERROR_COLOR} />
-                  <Text style={styles.errorText}>{passwordError}</Text>
+                <View className="mt-0.5 flex-row items-center gap-1.5">
+                  <Feather name="alert-circle" size={13} color={ICON.danger} />
+                  <Text className="text-xs text-danger">{passwordError}</Text>
                 </View>
               ) : null}
             </View>
 
             {/* Login button */}
             <TouchableOpacity
-              style={styles.loginButton}
+              className="mt-1 items-center rounded-xl bg-navy py-4 active:opacity-80"
               onPress={handleLogin}
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Login">
-              <Text style={styles.loginButtonText}>Login</Text>
+              <Text className="text-base font-bold text-white">Login</Text>
             </TouchableOpacity>
 
-            <Text style={styles.forgotPassword}>
+            <Text className="text-center text-[13px] text-subtle">
               Lupa password? Hubungi admin.
             </Text>
           </View>
@@ -214,116 +212,3 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-    paddingVertical: 48,
-  },
-
-  // Branding
-  brandSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logo: {
-    width: 76,
-    height: 76,
-    marginBottom: 16,
-  },
-  appName: {
-    color: PRIMARY,
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  subtitle: {
-    color: '#6B7280',
-    fontSize: 15,
-    fontWeight: '400',
-  },
-
-  // Form card
-  formSection: {
-    width: '100%',
-    maxWidth: 440,
-    alignSelf: 'center',
-    padding: 22,
-    borderRadius: 22,
-    backgroundColor: '#F4F7FC',
-    borderWidth: 1,
-    borderColor: '#DCE5F0',
-    gap: 16,
-  },
-  fieldGroup: {
-    gap: 6,
-  },
-  label: {
-    color: PRIMARY,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1.5,
-    borderColor: BORDER_DEFAULT,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    backgroundColor: '#FFFFFF',
-  },
-  inputWrapFocused: {
-    // shadow subtil saat fokus
-    shadowColor: PRIMARY,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 13,
-    fontSize: 15,
-    color: '#111827',
-  },
-  errorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 2,
-  },
-  errorText: {
-    color: ERROR_COLOR,
-    fontSize: 12,
-  },
-
-  // Button
-  loginButton: {
-    backgroundColor: PRIMARY,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  forgotPassword: {
-    textAlign: 'center',
-    color: '#6B7280',
-    fontSize: 13,
-  },
-});
