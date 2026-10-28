@@ -1,54 +1,79 @@
-import { useState } from 'react';
+/**
+ * presensi.tsx
+ * Flow 3 langkah: Sesi Valid → Liveness → Cocokkan Wajah
+ * Masing-masing step memiliki UI & logika berbeda.
+ * Saat ini tanpa kamera nyata — placeholder oval + tombol simulasi.
+ * Integrasi expo-camera bisa ditambahkan nanti tanpa mengubah struktur step.
+ */
+
+import { useEffect, useRef, useState } from 'react';
 import {
-  ScrollView,
+  ActivityIndicator,
+  Animated,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { SymbolView } from 'expo-symbols';
 import { HimaforHeader } from '@/components/himafor-header';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const PRIMARY = '#101477';
+const NAVY   = '#101477';
+const TEAL   = '#39BFB7';
+const MUTED  = '#7183A2';
+const BORDER = '#DCE5F0';
+const RED    = '#C0394F';
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
-type Step = 'sesi' | 'liveness' | 'cocokkan';
+type StepKey = 'sesi' | 'liveness' | 'cocokkan';
 
-const STEPS: { key: Step; label: string }[] = [
-  { key: 'sesi', label: 'Sesi valid' },
-  { key: 'liveness', label: 'Liveness' },
-  { key: 'cocokkan', label: 'Cocokkan wajah' },
+const STEPS: { key: StepKey; label: string }[] = [
+  { key: 'sesi',     label: 'Sesi valid'    },
+  { key: 'liveness', label: 'Liveness'      },
+  { key: 'cocokkan', label: 'Cocokkan wajah'},
 ];
 
-// ─── Liveness instructions per active step ────────────────────────────────────
-const LIVENESS_INSTRUCTION = 'Kedipkan mata dua kali';
-
 // ─── Step Indicator ───────────────────────────────────────────────────────────
-function StepIndicator({ active }: { active: Step }) {
+type StepState = 'pending' | 'active' | 'done';
+
+function StepIndicator({ current }: { current: StepKey }) {
+  const idx = STEPS.findIndex((s) => s.key === current);
   return (
     <View style={stepStyles.row}>
-      {STEPS.map((step) => {
-        const isActive = step.key === active;
+      {STEPS.map((step, i) => {
+        const state: StepState =
+          i < idx ? 'done' : i === idx ? 'active' : 'pending';
         return (
-          <View
-            key={step.key}
-            style={[
+          <View key={step.key} style={stepStyles.chipWrap}>
+            <View style={[
               stepStyles.chip,
-              isActive ? stepStyles.chipActive : stepStyles.chipDefault,
-            ]}
-            accessibilityRole="text"
-            accessibilityLabel={`${step.label}${isActive ? ', aktif' : ''}`}>
-            <Text
-              style={[
+              state === 'active'  && stepStyles.chipActive,
+              state === 'done'    && stepStyles.chipDone,
+              state === 'pending' && stepStyles.chipPending,
+            ]}>
+              {state === 'done' ? (
+                <SymbolView
+                  name={{ ios: 'checkmark', android: 'check', web: 'check' }}
+                  size={11}
+                  tintColor="#FFFFFF"
+                />
+              ) : null}
+              <Text style={[
                 stepStyles.chipText,
-                isActive ? stepStyles.chipTextActive : stepStyles.chipTextDefault,
+                state === 'active'  && stepStyles.chipTextActive,
+                state === 'done'    && stepStyles.chipTextDone,
+                state === 'pending' && stepStyles.chipTextPending,
               ]}>
-              {step.label}
-            </Text>
+                {step.label}
+              </Text>
+            </View>
+            {/* Connector line */}
+            {i < STEPS.length - 1 && (
+              <View style={[stepStyles.connector, i < idx && stepStyles.connectorDone]} />
+            )}
           </View>
         );
       })}
@@ -57,108 +82,269 @@ function StepIndicator({ active }: { active: Step }) {
 }
 
 const stepStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-    marginBottom: 28,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },
+  chipWrap: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   chip: {
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
     borderWidth: 1.5,
   },
-  chipDefault: {
-    backgroundColor: '#FFFFFF',
-    borderColor: PRIMARY,
+  chipActive:  { backgroundColor: NAVY,  borderColor: NAVY  },
+  chipDone:    { backgroundColor: TEAL,  borderColor: TEAL  },
+  chipPending: { backgroundColor: '#FFF',borderColor: BORDER },
+  chipText: { fontSize: 12, fontWeight: '600' },
+  chipTextActive:  { color: '#FFF'  },
+  chipTextDone:    { color: '#FFF'  },
+  chipTextPending: { color: MUTED   },
+  connector: { flex: 1, height: 2, backgroundColor: BORDER, marginHorizontal: 4 },
+  connectorDone: { backgroundColor: TEAL },
+});
+
+// ─── Camera Oval ─────────────────────────────────────────────────────────────
+function CameraOval({ scanning }: { scanning: boolean }) {
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (scanning) {
+      const anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1.04, duration: 700, useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 1,    duration: 700, useNativeDriver: true }),
+        ])
+      );
+      anim.start();
+      return () => anim.stop();
+    }
+    pulse.setValue(1);
+  }, [scanning, pulse]);
+
+  return (
+    <View style={ovalStyles.wrapper}>
+      <Animated.View style={[ovalStyles.oval, { transform: [{ scale: pulse }] }]}>
+        <Text style={ovalStyles.label}>Kamera depan</Text>
+        {scanning && <ActivityIndicator color={TEAL} style={{ marginTop: 8 }} />}
+      </Animated.View>
+    </View>
+  );
+}
+
+const ovalStyles = StyleSheet.create({
+  wrapper: { alignItems: 'center', marginBottom: 24 },
+  oval: {
+    width: 230, height: 280, borderRadius: 115,
+    borderWidth: 2.5, borderColor: NAVY, borderStyle: 'dashed',
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center', justifyContent: 'center',
   },
-  chipActive: {
-    backgroundColor: PRIMARY,
-    borderColor: PRIMARY,
+  label: { fontSize: 14, color: MUTED },
+});
+
+// ─── STEP VIEWS ───────────────────────────────────────────────────────────────
+
+/** Step 1: validasi sesi otomatis */
+function StepSesi({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    // Simulasi pengecekan sesi — ganti dengan API call nyata
+    const t = setTimeout(onDone, 1500);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <View style={innerStyles.center}>
+      <CameraOval scanning />
+      <View style={innerStyles.statusBox}>
+        <ActivityIndicator color={NAVY} />
+        <Text style={innerStyles.statusText}>Memvalidasi sesi presensi…</Text>
+      </View>
+    </View>
+  );
+}
+
+/** Step 2: deteksi liveness (kedip mata) */
+function StepLiveness({ onSuccess, onFail }: { onSuccess: () => void; onFail: () => void }) {
+  const [blinkCount, setBlinkCount] = useState(0);
+  const TARGET = 2;
+
+  const handleBlink = () => {
+    const next = blinkCount + 1;
+    setBlinkCount(next);
+    if (next >= TARGET) {
+      setTimeout(onSuccess, 400);
+    }
+  };
+
+  return (
+    <View style={innerStyles.flex}>
+      <CameraOval scanning={blinkCount > 0 && blinkCount < TARGET} />
+
+      {/* Blink progress dots */}
+      <View style={innerStyles.dotsRow}>
+        {Array.from({ length: TARGET }).map((_, i) => (
+          <View key={i} style={[innerStyles.dot, i < blinkCount && innerStyles.dotFilled]} />
+        ))}
+      </View>
+
+      {/* Instruction card */}
+      <View style={innerStyles.instrCard}>
+        <SymbolView
+          name={{ ios: 'eye', android: 'visibility', web: 'visibility' }}
+          size={20} tintColor={NAVY}
+        />
+        <Text style={innerStyles.instrText}>Kedipkan mata {TARGET} kali</Text>
+      </View>
+      <Text style={innerStyles.helper}>
+        Jangan gunakan foto atau layar. Wajah harus di dalam bingkai.
+      </Text>
+
+      {/* Simulate blink button — hapus & ganti kamera nyata jika sudah integrasi */}
+      <Pressable
+        onPress={handleBlink}
+        accessibilityRole="button"
+        style={({ pressed }) => [innerStyles.simBtn, pressed && { opacity: 0.75 }]}>
+        <Text style={innerStyles.simBtnText}>
+          Kedip ({blinkCount}/{TARGET})
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/** Step 3: pencocokan wajah */
+function StepCocokkan({ onSuccess, onFail }: { onSuccess: () => void; onFail: () => void }) {
+  const [matching, setMatching] = useState(false);
+
+  const handleCocokkan = () => {
+    setMatching(true);
+    // Simulasi pencocokan 2 detik — ganti dengan API face-matching nyata
+    setTimeout(() => {
+      setMatching(false);
+      onSuccess(); // ganti onFail() untuk simulasi kegagalan
+    }, 2000);
+  };
+
+  return (
+    <View style={innerStyles.flex}>
+      <CameraOval scanning={matching} />
+
+      <View style={innerStyles.instrCard}>
+        <SymbolView
+          name={{ ios: 'person.fill.viewfinder', android: 'face_retouching_natural', web: 'face_retouching_natural' }}
+          size={20} tintColor={NAVY}
+        />
+        <Text style={innerStyles.instrText}>Posisikan wajah di dalam bingkai</Text>
+      </View>
+      <Text style={innerStyles.helper}>
+        Pastikan pencahayaan cukup dan wajah terlihat jelas.
+      </Text>
+
+      <Pressable
+        onPress={handleCocokkan}
+        disabled={matching}
+        accessibilityRole="button"
+        style={({ pressed }) => [
+          innerStyles.simBtn,
+          innerStyles.simBtnPrimary,
+          (pressed || matching) && { opacity: 0.75 },
+        ]}>
+        {matching
+          ? <ActivityIndicator color="#FFF" />
+          : <Text style={[innerStyles.simBtnText, { color: '#FFF' }]}>Cocokkan wajah</Text>}
+      </Pressable>
+    </View>
+  );
+}
+
+const innerStyles = StyleSheet.create({
+  flex: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center' },
+  statusBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 8 },
+  statusText: { fontSize: 14, color: MUTED },
+  dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 16 },
+  dot: { width: 12, height: 12, borderRadius: 6, borderWidth: 1.5, borderColor: MUTED },
+  dotFilled: { backgroundColor: TEAL, borderColor: TEAL },
+  instrCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1.5, borderColor: NAVY, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 14, marginBottom: 12,
   },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '600',
+  instrText: { fontSize: 14, fontWeight: '600', color: NAVY, flex: 1 },
+  helper: { fontSize: 12, color: MUTED, textAlign: 'center', lineHeight: 18, marginBottom: 20 },
+  simBtn: {
+    borderWidth: 1.5, borderColor: NAVY, borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center', marginBottom: 10,
   },
-  chipTextDefault: {
-    color: PRIMARY,
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-  },
+  simBtnPrimary: { backgroundColor: NAVY, borderColor: NAVY },
+  simBtnText: { fontSize: 14, fontWeight: '700', color: NAVY },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PresensiScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const cameraWidth = Math.min(230, width - 64);
-  // Active step – update this as the flow progresses
-  const [activeStep] = useState<Step>('liveness');
+  const [step, setStep] = useState<StepKey>('sesi');
 
-  const handleBatal = () => {
-    router.back();
+  const goNext = (from: StepKey) => {
+    if (from === 'sesi')     setStep('liveness');
+    if (from === 'liveness') setStep('cocokkan');
   };
+
+  const handleSuccess = () => router.replace('/presensi-tercatat' as any);
+  const handleFail    = () => router.replace('/presensi-ditolak'  as any);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.app}>
         <HimaforHeader />
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}>
-        {/* Page title with back arrow */}
-        <View style={styles.pageTitleRow}>
-          <TouchableOpacity
+        <View style={styles.content}>
+          {/* Title row */}
+          <View style={styles.titleRow}>
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Kembali"
+              style={({ pressed }) => pressed && { opacity: 0.6 }}>
+              <SymbolView
+                name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }}
+                size={22} tintColor={NAVY}
+              />
+            </Pressable>
+            <Text style={styles.pageTitle}>Presensi</Text>
+          </View>
+
+          {/* Session name */}
+          <Text style={styles.sessionName}>Rapat Pengurus HIMAFOR</Text>
+
+          {/* Step indicator */}
+          <StepIndicator current={step} />
+
+          {/* Step content */}
+          {step === 'sesi' && (
+            <StepSesi onDone={() => goNext('sesi')} />
+          )}
+          {step === 'liveness' && (
+            <StepLiveness
+              onSuccess={() => goNext('liveness')}
+              onFail={handleFail}
+            />
+          )}
+          {step === 'cocokkan' && (
+            <StepCocokkan
+              onSuccess={handleSuccess}
+              onFail={handleFail}
+            />
+          )}
+        </View>
+
+        {/* Footer batal */}
+        <View style={styles.footer}>
+          <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
-            accessibilityLabel="Kembali"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Feather name="arrow-left" size={21} color={PRIMARY} />
-          </TouchableOpacity>
-          <Text style={styles.pageTitle}>Presensi</Text>
-        </View>
-
-        {/* Session name */}
-        <Text style={styles.sessionName}>Rapat Pengurus HIMAFOR</Text>
-
-        {/* Step indicator */}
-        <StepIndicator active={activeStep} />
-
-        {/* Camera oval */}
-        <View style={styles.cameraWrapper}>
-          <View
-            style={[
-              styles.cameraOval,
-              { width: cameraWidth, height: Math.min(280, cameraWidth * 1.22) },
-            ]}>
-            <Text style={styles.cameraLabel}>Kamera depan</Text>
-          </View>
-        </View>
-
-        {/* Liveness instruction button */}
-        <View style={styles.instructionBox}>
-          <Text style={styles.instructionText}>{LIVENESS_INSTRUCTION}</Text>
-        </View>
-
-        {/* Helper note */}
-        <Text style={styles.helperText}>
-          Jangan gunakan foto atau layar. Wajah harus di dalam bingkai.
-        </Text>
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.batalButton}
-            onPress={handleBatal}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel="Batal presensi">
+            accessibilityLabel="Batal presensi"
+            style={({ pressed }) => [styles.batalBtn, pressed && { opacity: 0.8 }]}>
             <Text style={styles.batalText}>Batal</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </SafeAreaView>
@@ -167,114 +353,13 @@ export default function PresensiScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  app: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 430,
-    backgroundColor: '#FFFFFF',
-  },
-  scroll: {
-    flex: 1,
-    backgroundColor: '#F4F7FC',
-  },
-
-  // Content
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 24,
-    width: '100%',
-    maxWidth: 640,
-    alignSelf: 'center',
-  },
-
-  // Page title row
-  pageTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
-  },
-  pageTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: PRIMARY,
-  },
-
-  // Session name
-  sessionName: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 20,
-  },
-
-  // Camera oval
-  cameraWrapper: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  cameraOval: {
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: PRIMARY,
-    borderStyle: 'dashed',
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cameraLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-
-  // Instruction box
-  instructionBox: {
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  instructionText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: PRIMARY,
-  },
-
-  // Helper note
-  helperText: {
-    fontSize: 13,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 8,
-  },
-
-  // Footer
-  footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 12,
-    paddingTop: 10,
-    width: '100%',
-    maxWidth: 640,
-    alignSelf: 'center',
-  },
-  batalButton: {
-    backgroundColor: PRIMARY,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  batalText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  safeArea: { flex: 1, alignItems: 'center', backgroundColor: '#FFFFFF' },
+  app: { flex: 1, width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF' },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
+  pageTitle: { fontSize: 27, fontWeight: '800', color: NAVY },
+  sessionName: { fontSize: 13, color: MUTED, marginBottom: 20 },
+  footer: { paddingHorizontal: 20, paddingBottom: 28, paddingTop: 8 },
+  batalBtn: { backgroundColor: NAVY, borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  batalText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
 });
