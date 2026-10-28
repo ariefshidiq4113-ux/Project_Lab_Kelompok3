@@ -1,60 +1,145 @@
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { HimaforHeader } from '@/components/himafor-header';
+
+const PRIMARY = '#1A237E';
+const TEAL = '#26C6B0';
 
 export default function PresensiTercatatScreen() {
   const router = useRouter();
-
   const handleSelesai = () => {
-    router.replace('/kegiatan');
+    router.replace('/beranda' as any);
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      <HimaforHeader />
-      <ScrollView
-        contentContainerClassName="w-full max-w-[640px] flex-grow items-center justify-center gap-6 self-center px-5 py-8"
-        showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
         {/* Success icon */}
-        <View className="h-[110px] w-[110px] items-center justify-center rounded-full bg-success-soft">
-          <View className="h-[72px] w-[72px] items-center justify-center rounded-full bg-teal">
-            <Feather name="check" size={34} color="#FFFFFF" />
+        <View style={styles.iconOuterRing}>
+          <View style={styles.iconInnerCircle}>
+            <Text style={styles.checkmark}>✓</Text>
           </View>
         </View>
 
         {/* Title */}
-        <Text className="text-center text-[26px] font-extrabold text-navy">
-          Presensi tercatat
-        </Text>
+        <Text style={styles.title}>Presensi tercatat</Text>
 
         {/* Detail card */}
-        <View className="w-full rounded-[14px] border border-card-line px-5 py-1">
-          <View className="flex-row items-center justify-between border-b border-divider py-3.5">
-            <Text className="text-sm text-subtle">Kegiatan</Text>
-            <Text className="text-sm font-bold text-navy">Rapat Pengurus</Text>
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Kegiatan</Text>
+            <Text style={styles.rowValue}>Rapat Pengurus</Text>
           </View>
-          <View className="flex-row items-center justify-between border-b border-divider py-3.5">
-            <Text className="text-sm text-subtle">Waktu</Text>
-            <Text className="text-sm font-bold text-navy">[Jam]</Text>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Waktu</Text>
+            <Text style={styles.rowValue}>[Jam]</Text>
           </View>
-          <View className="flex-row items-center justify-between py-3.5">
-            <Text className="text-sm text-subtle">Metode</Text>
-            <Text className="text-sm font-bold text-navy">Wajah + liveness</Text>
+          <View style={[styles.row, styles.rowLast]}>
+            <Text style={styles.rowLabel}>Metode</Text>
+            <Text style={styles.rowValue}>Wajah + liveness</Text>
           </View>
         </View>
 
         {/* CTA button */}
         <TouchableOpacity
-          className="w-full items-center rounded-xl bg-navy py-[17px] active:opacity-80"
+          style={styles.button}
           onPress={handleSelesai}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Selesai">
-          <Text className="text-base font-bold text-white">Selesai</Text>
+          <Text style={styles.buttonText}>Selesai</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 28,
+  },
+
+  // Success icon
+  iconOuterRing: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#E0F7F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconInnerCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: TEAL,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkmark: {
+    color: PRIMARY,
+    fontSize: 32,
+    fontWeight: '800',
+    lineHeight: 38,
+  },
+
+  // Title
+  title: {
+    color: PRIMARY,
+    fontSize: 26,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+
+  // Detail card
+  card: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 4,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  rowLast: {
+    borderBottomWidth: 0,
+  },
+  rowLabel: {
+    color: '#6B7280',
+    fontSize: 14,
+  },
+  rowValue: {
+    color: PRIMARY,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Button
+  button: {
+    width: '100%',
+    backgroundColor: PRIMARY,
+    borderRadius: 12,
+    paddingVertical: 17,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
