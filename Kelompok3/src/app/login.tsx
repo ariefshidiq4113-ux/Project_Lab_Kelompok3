@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
+  Keyboard,
+  Modal,
+  Pressable,
   Text,
   TextInput,
   TouchableOpacity,
@@ -21,8 +25,32 @@ const ICON = {
   placeholder: '#9CA3AF',
 } as const;
 
+/* ------------------------------ Peran & tujuan ----------------------------- */
+
+type Role = 'admin' | 'anggota';
+
+const ADMIN_HOME = '/Presensifix'; // sesi presensi admin
+const MEMBER_HOME = '/register-face'; // alur anggota (daftar wajah / dashboard)
+
+async function loginRequest(email: string, _password: string): Promise<{ role: Role }> {
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  return { role: email.toLowerCase().includes('admin') ? 'admin' : 'anggota' };
+}
+
 function validateEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function inputBorderClass(error: string, focused: boolean) {
+  if (error) return 'border-danger';
+  if (focused) return 'border-navy';
+  return 'border-line';
+}
+
+function iconColor(error: string, focused: boolean) {
+  if (error) return ICON.danger;
+  if (focused) return ICON.navy;
+  return ICON.muted;
 }
 
 export default function LoginScreen() {
@@ -35,8 +63,12 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showRolePicker, setShowRolePicker] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    if (loading) return;
+
     let valid = true;
 
     if (!email.trim()) {
@@ -61,24 +93,32 @@ export default function LoginScreen() {
 
     if (!valid) return;
 
-    // TODO: hubungkan ke auth API
-    router.replace('/beranda' as any);
+    Keyboard.dismiss();
+    setLoading(true);
+    try {
+      const { role } = await loginRequest(email.trim(), password);
+
+      if (role === 'admin') {
+        // Akun admin: tanyakan dulu mau masuk sebagai Admin atau Anggota
+        setShowRolePicker(true);
+      } else {
+        router.replace(MEMBER_HOME as any);
+      }
+    } catch {
+      setPasswordError('Email atau password salah.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const emailBorderClass = emailError
-    ? 'border-danger'
-    : emailFocused
-      ? 'border-navy shadow-sm shadow-navy/20'
-      : 'border-line';
-
-  const passwordBorderClass = passwordError
-    ? 'border-danger'
-    : passwordFocused
-      ? 'border-navy shadow-sm shadow-navy/20'
-      : 'border-line';
+  /** Dipanggil dari popup pilihan peran. */
+  const enterAs = (target: Role) => {
+    setShowRolePicker(false);
+    router.replace((target === 'admin' ? ADMIN_HOME : MEMBER_HOME) as any);
+  };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -91,7 +131,7 @@ export default function LoginScreen() {
           <View className="mb-8 items-center">
             <Image
               source={require('@/assets/images/himafor-logo.png')}
-              style={{ width: 76, height: 76, marginBottom: 16 }}
+              className="mb-4 h-[76px] w-[76px]"
               contentFit="contain"
               accessibilityLabel="Logo HIMAFOR"
             />
@@ -104,17 +144,17 @@ export default function LoginScreen() {
           </View>
 
           {/* Form */}
-          <View className="w-full max-w-[440px] self-center gap-4 rounded-[22px] border border-line bg-surface p-[22px]">
+          <View className="w-full max-w-[440px] gap-4 self-center rounded-[22px] border border-line bg-surface p-[22px]">
 
             {/* Email field */}
             <View className="gap-1.5">
               <Text className="text-sm font-bold text-navy">Email</Text>
               <View
-                className={`flex-row items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3.5 ${emailBorderClass}`}>
+                className={`flex-row items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3.5 ${inputBorderClass(emailError, emailFocused)}`}>
                 <Feather
                   name="mail"
                   size={18}
-                  color={emailError ? ICON.danger : emailFocused ? ICON.navy : ICON.muted}
+                  color={iconColor(emailError, emailFocused)}
                 />
                 <TextInput
                   className="flex-1 py-[13px] text-[15px] text-ink-dark"
@@ -151,11 +191,11 @@ export default function LoginScreen() {
             <View className="gap-1.5">
               <Text className="text-sm font-bold text-navy">Password</Text>
               <View
-                className={`flex-row items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3.5 ${passwordBorderClass}`}>
+                className={`flex-row items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3.5 ${inputBorderClass(passwordError, passwordFocused)}`}>
                 <Feather
                   name="lock"
                   size={18}
-                  color={passwordError ? ICON.danger : passwordFocused ? ICON.navy : ICON.muted}
+                  color={iconColor(passwordError, passwordFocused)}
                 />
                 <TextInput
                   className="flex-1 py-[13px] text-[15px] text-ink-dark"
@@ -195,12 +235,17 @@ export default function LoginScreen() {
 
             {/* Login button */}
             <TouchableOpacity
-              className="mt-1 items-center rounded-xl bg-navy py-4 active:opacity-80"
+              className={`mt-1 items-center rounded-xl bg-navy py-4 active:opacity-85 ${loading ? 'opacity-70' : ''}`}
               onPress={handleLogin}
+              disabled={loading}
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Login">
-              <Text className="text-base font-bold text-white">Login</Text>
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text className="text-base font-bold text-white">Login</Text>
+              )}
             </TouchableOpacity>
 
             <Text className="text-center text-[13px] text-subtle">
@@ -209,6 +254,47 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Popup pilihan peran: hanya muncul bila role di database = admin */}
+      <Modal
+        visible={showRolePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRolePicker(false)}>
+        <Pressable
+          className="flex-1 items-center justify-center bg-black/50 p-6"
+          onPress={() => setShowRolePicker(false)}>
+          {/* Pressable kosong agar ketukan di dalam kartu tidak menutup popup */}
+          <Pressable
+            className="w-full max-w-[360px] rounded-2xl bg-white px-5 pb-6 pt-5"
+            onPress={() => {}}>
+            <Text className="text-center text-base font-bold text-navy">
+              Login Sebagai Admin atau Anggota
+            </Text>
+            <View className="my-4 h-px bg-card-line" />
+
+            <View className="flex-row gap-4">
+              <TouchableOpacity
+                className="flex-1 items-center rounded-[10px] bg-navy py-3.5 active:opacity-85"
+                onPress={() => enterAs('admin')}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Login sebagai Admin">
+                <Text className="text-sm font-bold text-white">Admin</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="flex-1 items-center rounded-[10px] bg-navy py-3.5 active:opacity-85"
+                onPress={() => enterAs('anggota')}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Login sebagai Anggota">
+                <Text className="text-sm font-bold text-white">Anggota</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
