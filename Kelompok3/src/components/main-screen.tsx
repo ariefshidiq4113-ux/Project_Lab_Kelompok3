@@ -9,15 +9,17 @@ type TabPath = '/beranda' | '/kegiatan' | '/riwayat' | '/profil';
 
 export function MainScreen({
   activePath,
+  showNotifications = false,
   children,
 }: {
   activePath: TabPath;
+  showNotifications?: boolean;
   children: ReactNode;
 }) {
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <View style={styles.app}>
-        <HimaforHeader />
+        <HimaforHeader showNotifications={showNotifications} />
         {children}
         <MainTabBar activePath={activePath} />
       </View>

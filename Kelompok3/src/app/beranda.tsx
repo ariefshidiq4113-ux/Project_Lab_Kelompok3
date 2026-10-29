@@ -19,7 +19,7 @@ const UPCOMING_ACTIVITIES = [
 
 export default function BerandaScreen() {
   return (
-    <MainScreen activePath="/beranda">
+    <MainScreen activePath="/beranda" showNotifications>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}

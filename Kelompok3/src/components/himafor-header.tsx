@@ -1,8 +1,15 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
-export function HimaforHeader({ role }: { role?: string }) {
+export function HimaforHeader({
+  role,
+  showNotifications = false,
+}: {
+  role?: string;
+  showNotifications?: boolean;
+}) {
   return (
     <View style={styles.header}>
       <Image
@@ -19,6 +26,15 @@ export function HimaforHeader({ role }: { role?: string }) {
       ) : (
         <>
           <View style={styles.spacer} />
+          {showNotifications && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Buka notifikasi"
+              onPress={() => router.push('/notifikasi')}
+              className="h-10 w-10 items-center justify-center rounded-full border border-line bg-white active:opacity-70">
+              <Feather name="bell" size={19} color="#101477" />
+            </Pressable>
+          )}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Buka profil"
