@@ -16,4 +16,4 @@ Pengujian aplikasi pada emulator mobile masih dalam proses. Pengujian perlu dila
 
 Saat ini, proses pengujian terkendala kebutuhan upgrade ke **SDK 58**. Setelah proses upgrade selesai, aplikasi akan diuji kembali untuk memastikan seluruh fitur berjalan dengan baik pada perangkat mobile.
 
-<video controls src="WhatsApp Video 2026-10-29 at 8.06.12 AM.mp4" title="Title"></video>
+![alt text](<WhatsApp Video 2026-10-29 at 8.06.12 AM.gif>)
