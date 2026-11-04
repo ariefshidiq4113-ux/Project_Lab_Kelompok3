@@ -25,7 +25,7 @@ export function AdminTabBar() {
               accessibilityLabel={tab.label}
               accessibilityState={{ selected: active }}
               onPress={() => {
-                if (!active) router.replace(tab.route);
+                if (!active) router.replace(tab.route as any);
               }}
               style={({ pressed }) => [styles.tab, pressed && styles.pressed]}>
               <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
