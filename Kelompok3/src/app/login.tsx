@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { login } from '@/services/auth.service';
 
 /** Hex untuk prop warna ikon (mirror tailwind.config.js). */
 const ICON = {
@@ -29,13 +30,8 @@ const ICON = {
 
 type Role = 'admin' | 'anggota';
 
-const ADMIN_HOME = '/Presensifix'; // sesi presensi admin
-const MEMBER_HOME = '/register-face'; // alur anggota (daftar wajah / dashboard)
-
-async function loginRequest(email: string, _password: string): Promise<{ role: Role }> {
-  await new Promise((resolve) => setTimeout(resolve, 600));
-  return { role: email.toLowerCase().includes('admin') ? 'admin' : 'anggota' };
-}
+const ADMIN_HOME = '/presensifix';
+const MEMBER_HOME = '/beranda';
 
 function validateEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -96,16 +92,26 @@ export default function LoginScreen() {
     Keyboard.dismiss();
     setLoading(true);
     try {
-      const { role } = await loginRequest(email.trim(), password);
+      const member = await login(email.trim(), password);
 
-      if (role === 'admin') {
+      if (member.isAdmin) {
         // Akun admin: tanyakan dulu mau masuk sebagai Admin atau Anggota
         setShowRolePicker(true);
+      } else if (member.mustChangePassword) {
+        router.replace('/register-face' as any);
       } else {
         router.replace(MEMBER_HOME as any);
       }
-    } catch {
-      setPasswordError('Email atau password salah.');
+    } catch (err: any) {
+      const msg: string = err?.message ?? '';
+      if (msg.toLowerCase().includes('email') || msg.toLowerCase().includes('password') || err?.status === 401) {
+        setPasswordError('Email atau password salah.');
+      } else if (err?.status === undefined) {
+        // Network error — tidak bisa reach server
+        setPasswordError('Tidak dapat terhubung ke server. Periksa koneksi internet.');
+      } else {
+        setPasswordError(msg || 'Terjadi kesalahan. Coba lagi.');
+      }
     } finally {
       setLoading(false);
     }
