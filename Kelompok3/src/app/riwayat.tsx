@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import {
   AttendanceRecord,
@@ -30,29 +30,18 @@ export default function RiwayatScreen() {
   return (
     <MainScreen activePath="/riwayat">
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        className="flex-1 bg-surface"
         showsVerticalScrollIndicator={false}>
-        <PageTitle>Riwayat presensi</PageTitle>
-        <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
-        <View>
-          {visibleRecords.map((record, index) => (
-            <HistoryCard key={`${record.present}-${index}`} record={record} />
-          ))}
+        <View className="pt-[22px] px-5 pb-6">
+          <PageTitle>Riwayat presensi</PageTitle>
+          <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
+          <View>
+            {visibleRecords.map((record, index) => (
+              <HistoryCard key={`${record.present}-${index}`} record={record} />
+            ))}
+          </View>
         </View>
       </ScrollView>
     </MainScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-    backgroundColor: '#F4F7FC',
-  },
-  content: {
-    paddingTop: 22,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-  },
-});
