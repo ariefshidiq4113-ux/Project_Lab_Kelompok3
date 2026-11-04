@@ -30,7 +30,7 @@ const ICON = {
 
 type Role = 'admin' | 'anggota';
 
-const ADMIN_HOME = '/presensifix';
+const ADMIN_HOME = '/presensi_admin';
 const MEMBER_HOME = '/beranda';
 
 function validateEmail(value: string) {

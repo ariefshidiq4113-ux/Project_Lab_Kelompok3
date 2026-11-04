@@ -60,7 +60,7 @@ export const login = async (req, res) => {
         jabatan: member.jabatan,
         departemen: member.departemen,
         kodeDepartemen: member.kodeDepartemen,
-        isAdmin: member.isAdmin,
+        isAdmin: member.isAdmin,   
         mustChangePassword: member.mustChangePassword,
       },
     });
