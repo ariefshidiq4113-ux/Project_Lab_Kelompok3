@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { Activity, ActivityCard, FilterChips, PageTitle } from '@/components/attendance-ui';
@@ -40,13 +40,11 @@ const ACTIVITIES: Activity[] = [
 
 export default function KegiatanScreen() {
   const [filter, setFilter] = useState<ActivityFilter>('Semua');
-  const visibleActivities = useMemo(() => {
-    if (filter === 'Hari ini') return ACTIVITIES.filter((activity) => activity.state === 'open');
-    if (filter === 'Selesai') {
-      return ACTIVITIES.filter((activity) => activity.state === 'completed');
-    }
-    return ACTIVITIES.filter((activity) => activity.state !== 'completed');
-  }, [filter]);
+  const visibleActivities = ACTIVITIES.filter((activity) => {
+    if (filter === 'Hari ini') return activity.state === 'open';
+    if (filter === 'Selesai') return activity.state === 'completed';
+    return true;
+  });
 
   return (
     <MainScreen activePath="/kegiatan">
