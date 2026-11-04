@@ -23,8 +23,6 @@ const memberSchema = new mongoose.Schema(
 const ADMIN_JABATAN = [
   "Ketua Umum",
   "Wakil Ketua Umum",
-  "Sekretaris Umum I",
-  "Sekretaris Umum II",
 ];
 
 memberSchema.virtual("isAdmin").get(function () {
