@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { Activity, ActivityCard, FilterChips, PageTitle } from '@/components/attendance-ui';
 import { MainScreen } from '@/components/main-screen';
@@ -51,45 +51,34 @@ export default function KegiatanScreen() {
   return (
     <MainScreen activePath="/kegiatan">
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        className="flex-1 bg-surface"
         showsVerticalScrollIndicator={false}>
-        <PageTitle>Kegiatan</PageTitle>
-        <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
-        <View>
-          {visibleActivities.map((activity) => (
-            <ActivityCard
-              key={activity.title}
-              activity={activity}
-              onPress={() =>
-                router.push({
-                  pathname: '/detail-kegiatan',
-                  params: {
-                    title: activity.title,
-                    date: activity.date,
-                    time: activity.time,
-                    state: activity.state,
-                    venue: activity.venue ?? '',
-                    agenda: activity.agenda ?? '',
-                  },
-                })
-              }
-            />
-          ))}
+        <View className="pt-[22px] px-5 pb-6">
+          <PageTitle>Kegiatan</PageTitle>
+          <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
+          <View>
+            {visibleActivities.map((activity) => (
+              <ActivityCard
+                key={activity.title}
+                activity={activity}
+                onPress={() =>
+                  router.push({
+                    pathname: '/detail-kegiatan',
+                    params: {
+                      title: activity.title,
+                      date: activity.date,
+                      time: activity.time,
+                      state: activity.state,
+                      venue: activity.venue ?? '',
+                      agenda: activity.agenda ?? '',
+                    },
+                  })
+                }
+              />
+            ))}
+          </View>
         </View>
       </ScrollView>
     </MainScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-    backgroundColor: '#F4F7FC',
-  },
-  content: {
-    paddingTop: 22,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-  },
-});

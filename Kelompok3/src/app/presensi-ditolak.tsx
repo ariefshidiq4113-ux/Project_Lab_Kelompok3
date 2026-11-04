@@ -1,43 +1,45 @@
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HimaforHeader } from '@/components/himafor-header';
 
 export default function PresensiDitolakScreen() {
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-      <View style={styles.app}>
+    <SafeAreaView className="flex-1 items-center bg-white">
+      <View className="w-full max-w-[430px] flex-1 bg-white">
         <HimaforHeader />
-        <View style={styles.content}>
-          <View style={styles.result}>
-            <View style={styles.iconOuter}>
-              <View style={styles.iconInner}>
+        <View className="flex-1 justify-center px-5">
+          <View className="mb-8 items-center">
+            <View className="mb-6 h-[106px] w-[106px] items-center justify-center rounded-full bg-[#EAF2FB]">
+              <View className="h-[72px] w-[72px] items-center justify-center rounded-full border-[1.5px] border-blue bg-teal">
                 <Feather name="x" size={29} color="#101477" />
               </View>
             </View>
-            <Text style={styles.title}>Presensi ditolak</Text>
-            <Text style={styles.description}>
+            <Text className="mb-3 text-[26px] font-extrabold text-navy">
+              Presensi ditolak
+            </Text>
+            <Text className="text-center text-[14px] leading-[23px] text-muted">
               Liveness tidak terdeteksi. Pastikan wajah terlihat jelas,
               {'\n'}tanpa foto atau layar.
             </Text>
           </View>
 
-          <View style={styles.actions}>
+          <View className="gap-[11px]">
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.replace('/kegiatan' as any)}
-              style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
+              onPress={() => router.replace('/kegiatan')}
+              className="h-[51px] flex-row items-center justify-center gap-[9px] rounded-xl bg-navy active:opacity-[0.78]">
               <Feather name="rotate-ccw" size={18} color="#FFFFFF" />
-              <Text style={styles.retryText}>Coba lagi</Text>
+              <Text className="text-[14px] font-bold text-white">Coba lagi</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/profil')}
-              style={({ pressed }) => [styles.adminButton, pressed && styles.pressed]}>
+              className="h-[51px] flex-row items-center justify-center gap-[9px] rounded-xl border border-line bg-white active:opacity-[0.78]">
               <Feather name="message-circle" size={18} color="#101477" />
-              <Text style={styles.adminText}>Hubungi admin</Text>
+              <Text className="text-[14px] font-bold text-navy">Hubungi admin</Text>
             </Pressable>
           </View>
         </View>
@@ -45,93 +47,3 @@ export default function PresensiDitolakScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  app: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 430,
-    backgroundColor: '#FFFFFF',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
-  result: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  iconOuter: {
-    width: 106,
-    height: 106,
-    borderRadius: 53,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EAF2FB',
-    marginBottom: 24,
-  },
-  iconInner: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#39BFB7',
-    borderWidth: 1.5,
-    borderColor: '#3289D1',
-  },
-  title: {
-    color: '#101477',
-    fontSize: 26,
-    fontWeight: '800',
-    marginBottom: 12,
-  },
-  description: {
-    color: '#7183A2',
-    fontSize: 14,
-    lineHeight: 23,
-    textAlign: 'center',
-  },
-  actions: {
-    gap: 11,
-  },
-  retryButton: {
-    height: 51,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-    borderRadius: 12,
-    backgroundColor: '#101477',
-  },
-  retryText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  adminButton: {
-    height: 51,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 9,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#DCE5F0',
-    backgroundColor: '#FFFFFF',
-  },
-  adminText: {
-    color: '#101477',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  pressed: {
-    opacity: 0.78,
-  },
-});

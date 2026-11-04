@@ -50,8 +50,8 @@ export default function RegisterFaceScreen() {
       <HimaforHeader role="Anggota" />
       <ScrollView
         className="flex-1 bg-surface"
-        contentContainerClassName="w-full max-w-[640px] flex-grow items-center self-center px-6 pt-6"
         showsVerticalScrollIndicator={false}>
+        <View className="w-full max-w-[640px] flex-grow items-center self-center px-6 pt-6">
         {/* Page title */}
         <Text className="mb-5 w-full self-start text-2xl font-extrabold text-navy">
           Daftarkan wajah
@@ -95,6 +95,7 @@ export default function RegisterFaceScreen() {
         <Text className="text-center text-[13px] text-subtle">
           {sampelLabel} · {poseInstruction}
         </Text>
+        </View>
       </ScrollView>
 
       {/* Bottom CTA */}

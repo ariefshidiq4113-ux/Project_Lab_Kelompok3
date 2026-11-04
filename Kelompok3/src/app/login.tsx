@@ -120,7 +120,7 @@ export default function LoginScreen() {
   /** Dipanggil dari popup pilihan peran. */
   const enterAs = (target: Role) => {
     setShowRolePicker(false);
-    router.replace((target === 'admin' ? ADMIN_HOME : MEMBER_HOME) as any);
+    router.replace(target === 'admin' ? ADMIN_HOME : MEMBER_HOME);
   };
 
   return (
@@ -129,28 +129,27 @@ export default function LoginScreen() {
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-12"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
+          <View className="flex-grow justify-center px-6 py-12">
+            {/* Logo & Branding */}
+            <View className="mb-8 items-center">
+              <Image
+                source={require('@/assets/images/himafor-logo.png')}
+                className="mb-4 h-[76px] w-[76px]"
+                contentFit="contain"
+                accessibilityLabel="Logo HIMAFOR"
+              />
+              <Text className="mb-1 text-[28px] font-extrabold tracking-wide text-navy">
+                HIMAFOR
+              </Text>
+              <Text className="text-[15px] font-normal text-subtle">
+                Attendance System
+              </Text>
+            </View>
 
-          {/* Logo & Branding */}
-          <View className="mb-8 items-center">
-            <Image
-              source={require('@/assets/images/himafor-logo.png')}
-              className="mb-4 h-[76px] w-[76px]"
-              contentFit="contain"
-              accessibilityLabel="Logo HIMAFOR"
-            />
-            <Text className="mb-1 text-[28px] font-extrabold tracking-wide text-navy">
-              HIMAFOR
-            </Text>
-            <Text className="text-[15px] font-normal text-subtle">
-              Attendance System
-            </Text>
-          </View>
-
-          {/* Form */}
-          <View className="w-full max-w-[440px] gap-4 self-center rounded-[22px] border border-line bg-surface p-[22px]">
+            {/* Form */}
+            <View className="w-full max-w-[440px] gap-4 self-center rounded-[22px] border border-line bg-surface p-[22px]">
 
             {/* Email field */}
             <View className="gap-1.5">
@@ -264,6 +263,7 @@ export default function LoginScreen() {
             <Text className="text-center text-[13px] text-subtle">
               Lupa password? Hubungi admin.
             </Text>
+          </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

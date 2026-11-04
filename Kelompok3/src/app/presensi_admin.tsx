@@ -233,29 +233,30 @@ export default function PresensiFix() {
 
       <ScrollView
         className="flex-1 bg-[#F6F8FC]"
-        contentContainerClassName="px-5 pb-6 pt-5"
         showsVerticalScrollIndicator={false}
       >
-        {/* Kartu sesi aktif */}
-        <SessionCard session={ACTIVE_SESSION} isOpen={isOpen} onToggle={handleToggleSession} />
+        <View className="px-5 pb-6 pt-5">
+          {/* Kartu sesi aktif */}
+          <SessionCard session={ACTIVE_SESSION} isOpen={isOpen} onToggle={handleToggleSession} />
 
-        {/* Tombol ekspor */}
-        <View className="mt-4 flex-row gap-3">
-          <ExportButton label="Ekspor Excel" icon="file-text" onPress={() => handleExport("Excel")} />
-          <ExportButton label="Ekspor PDF" icon="file" onPress={() => handleExport("PDF")} />
+          {/* Tombol ekspor */}
+          <View className="mt-4 flex-row gap-3">
+            <ExportButton label="Ekspor Excel" icon="file-text" onPress={() => handleExport("Excel")} />
+            <ExportButton label="Ekspor PDF" icon="file" onPress={() => handleExport("PDF")} />
+          </View>
+
+          {/* Daftar kehadiran */}
+          <View className="mb-3 mt-6 flex-row items-center justify-between">
+            <Text className="text-lg font-bold text-[#0A0A6B]">Kehadiran anggota</Text>
+            <Text className="text-xs text-[#6B7690]">{totalLabel}</Text>
+          </View>
+
+          {records.length === 0 ? (
+            <EmptyAttendance isOpen={isOpen} />
+          ) : (
+            records.map((item) => <AttendanceCard key={item.id} item={item} />)
+          )}
         </View>
-
-        {/* Daftar kehadiran */}
-        <View className="mb-3 mt-6 flex-row items-center justify-between">
-          <Text className="text-lg font-bold text-[#0A0A6B]">Kehadiran anggota</Text>
-          <Text className="text-xs text-[#6B7690]">{totalLabel}</Text>
-        </View>
-
-        {records.length === 0 ? (
-          <EmptyAttendance isOpen={isOpen} />
-        ) : (
-          records.map((item) => <AttendanceCard key={item.id} item={item} />)
-        )}
       </ScrollView>
 
       <SafeAreaView edges={["bottom"]} className="bg-white">
