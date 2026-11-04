@@ -1,0 +1,24 @@
+# Mengabaikan folder dependencies / pustaka
+node_modules/
+vendor/
+
+# Mengabaikan file konfigurasi lokal dan environment (rahasia/kunci API)
+.env
+.env.local
+config.json
+
+# Mengabaikan hasil build / kompilasi
+dist/
+build/
+*.log
+
+# Mengabaikan file sistem operasi
+.DS_Store
+Thumbs.db
+
+# Mengabaikan file pengaturan IDE / Editor
+.idea/
+.vs/
+*.suo
+*.user
+.vscode/
