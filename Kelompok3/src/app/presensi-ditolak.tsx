@@ -1,3 +1,11 @@
+/**
+ * presensi-ditolak.tsx
+ * ---------------------------------------------------------------------------
+ * Halaman Presensi Ditolak — HIMAFOR Attendance System
+ * Diintegrasikan dengan sistem navigasi Expo Router & route aplikasi.
+ * ---------------------------------------------------------------------------
+ */
+
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
@@ -10,7 +18,9 @@ export default function PresensiDitolakScreen() {
     <SafeAreaView className="flex-1 items-center bg-white">
       <View className="w-full max-w-[430px] flex-1 bg-white">
         <HimaforHeader />
+        
         <View className="flex-1 justify-center px-5">
+          {/* Bagian Icon & Keterangan Error */}
           <View className="mb-8 items-center">
             <View className="mb-6 h-[106px] w-[106px] items-center justify-center rounded-full bg-[#EAF2FB]">
               <View className="h-[72px] w-[72px] items-center justify-center rounded-full border-[1.5px] border-blue bg-teal">
@@ -26,7 +36,9 @@ export default function PresensiDitolakScreen() {
             </Text>
           </View>
 
+          {/* Tombol Aksi */}
           <View className="gap-[11px]">
+            {/* Tombol Coba Lagi: Mengembalikan pengguna ke halaman daftar kegiatan untuk scan ulang */}
             <Pressable
               accessibilityRole="button"
               onPress={() => router.replace('/kegiatan')}
@@ -34,6 +46,8 @@ export default function PresensiDitolakScreen() {
               <Feather name="rotate-ccw" size={18} color="#FFFFFF" />
               <Text className="text-[14px] font-bold text-white">Coba lagi</Text>
             </Pressable>
+
+            {/* Tombol Hubungi Admin: Mengarahkan ke halaman profil/bantuan */}
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/profil')}
