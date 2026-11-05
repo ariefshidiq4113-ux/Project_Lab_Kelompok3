@@ -21,8 +21,9 @@
  * ---------------------------------------------------------------------------
  */
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -47,8 +48,8 @@ interface Member {
 interface EventItem {
   id: string;
   nama: string;
-  periode: string; // contoh: "Oktober 2026"
-  hadirIds: string[]; // id anggota yang hadir pada kegiatan ini
+  periode: string;
+  periodeLabel: string;
 }
 
 interface Option {
@@ -64,28 +65,109 @@ interface MemberRecap {
 }
 
 const ALL_EVENTS = "all";
-
-/** Data contoh. Ganti dengan data anggota & presensi dari API / database. */
-const MEMBERS: Member[] = [
-  { id: "m1", nama: "Ahmad Fauzi" },
-  { id: "m2", nama: "Siti Nurhaliza" },
-  { id: "m3", nama: "Rizky Pratama" },
-  { id: "m4", nama: "Dewi Lestari" },
+const ALL_PERIODS = "all";
+const MONTHS = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
 
-const EVENTS: EventItem[] = [
-  { id: "e1", nama: "Rapat Pengurus HIMAFOR", periode: "Oktober 2026", hadirIds: ["m1", "m2", "m3"] },
-  { id: "e2", nama: "Evaluasi Program Kerja", periode: "Oktober 2026", hadirIds: ["m1", "m2"] },
-  { id: "e3", nama: "Workshop Forensik Digital", periode: "Oktober 2026", hadirIds: ["m1", "m2", "m3", "m4"] },
-  { id: "e4", nama: "Rapat Kerja Awal Semester", periode: "September 2026", hadirIds: ["m1", "m4"] },
-];
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
-const DEFAULT_PERIOD = "Oktober 2026";
+async function requestApi(path: string): Promise<unknown> {
+  if (!API_BASE_URL) throw new Error("EXPO_PUBLIC_API_URL belum dikonfigurasi.");
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: { Accept: "application/json" },
+  });
+  const payload: unknown = await response.json();
+  if (!response.ok) {
+    const message = isRecord(payload) && typeof payload.message === "string"
+      ? payload.message
+      : `Permintaan gagal (${response.status}).`;
+    throw new Error(message);
+  }
+  return payload;
+}
+
+function parseEvent(value: unknown): EventItem {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    typeof value.nama !== "string" ||
+    typeof value.tanggal !== "string"
+  ) {
+    throw new Error("Format kegiatan dari server tidak valid.");
+  }
+  const date = new Date(value.tanggal);
+  if (Number.isNaN(date.getTime())) throw new Error("Tanggal kegiatan dari server tidak valid.");
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  return {
+    id: value.id,
+    nama: value.nama,
+    periode: `${year}-${String(month + 1).padStart(2, "0")}`,
+    periodeLabel: `${MONTHS[month]} ${year}`,
+  };
+}
+
+function parseRecap(value: unknown): { summary: Summary; memberRecaps: MemberRecap[] } {
+  if (
+    !isRecord(value) ||
+    value.success !== true ||
+    !isRecord(value.summary) ||
+    !Array.isArray(value.memberRecaps)
+  ) {
+    throw new Error("Format rekap dari server tidak valid.");
+  }
+  const summary = value.summary;
+  if (
+    typeof summary.hadir !== "number" ||
+    typeof summary.tidakHadir !== "number" ||
+    typeof summary.persen !== "number" ||
+    typeof summary.totalEvents !== "number"
+  ) {
+    throw new Error("Ringkasan kehadiran dari server tidak valid.");
+  }
+  const memberRecaps = value.memberRecaps.map((entry): MemberRecap => {
+    if (
+      !isRecord(entry) ||
+      !isRecord(entry.member) ||
+      typeof entry.member.id !== "string" ||
+      typeof entry.member.nama !== "string" ||
+      typeof entry.hadir !== "number" ||
+      typeof entry.tidakHadir !== "number" ||
+      typeof entry.persen !== "number"
+    ) {
+      throw new Error("Data rekap anggota dari server tidak valid.");
+    }
+    return {
+      member: { id: entry.member.id, nama: entry.member.nama },
+      hadir: entry.hadir,
+      tidakHadir: entry.tidakHadir,
+      persen: entry.persen,
+    };
+  });
+  return {
+    summary: {
+      hadir: summary.hadir,
+      tidakHadir: summary.tidakHadir,
+      persen: summary.persen,
+      totalEvents: summary.totalEvents,
+    },
+    memberRecaps,
+  };
+}
+
+interface Summary {
+  totalEvents: number;
+  hadir: number;
+  tidakHadir: number;
+  persen: number;
+}
 
 /* ================================ HELPERS ================================== */
-
-const toPercent = (hadir: number, total: number) =>
-  total === 0 ? 0 : Math.round((hadir / total) * 100);
 
 /* =============================== SUB-COMPONENTS ============================ */
 
@@ -277,20 +359,33 @@ export default function RekapFix() {
   const memberValueSize = width >= 768 ? 22 : width < 360 ? 16 : 18;
   const sidePadding = width >= 768 ? 24 : 20;
 
-  const [periode, setPeriode] = useState<string>(DEFAULT_PERIOD);
+  const [periode, setPeriode] = useState<string>(ALL_PERIODS);
   const [kegiatanId, setKegiatanId] = useState<string>(ALL_EVENTS);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [memberRecaps, setMemberRecaps] = useState<MemberRecap[]>([]);
+  const [summary, setSummary] = useState<Summary>({
+    totalEvents: 0,
+    hadir: 0,
+    tidakHadir: 0,
+    persen: 0,
+  });
 
   /* ---------- Opsi filter ---------- */
 
   const periodOptions: Option[] = useMemo(() => {
-    const unique = Array.from(new Set(EVENTS.map((e) => e.periode)));
-    return unique.map((p) => ({ value: p, label: p }));
-  }, []);
+    const unique = Array.from(new Map(events.map((event) => [event.periode, event.periodeLabel])).entries());
+    return [
+      { value: ALL_PERIODS, label: "Semua periode" },
+      ...unique.map(([value, label]) => ({ value, label })),
+    ];
+  }, [events]);
 
   const eventsInPeriod = useMemo(
-    () => EVENTS.filter((e) => e.periode === periode),
-    [periode],
+    () => periode === ALL_PERIODS ? events : events.filter((event) => event.periode === periode),
+    [events, periode],
   );
 
   const eventOptions: Option[] = useMemo(
@@ -303,32 +398,57 @@ export default function RekapFix() {
 
   /* ---------- Perhitungan rekap ---------- */
 
-  const selectedEvents = useMemo(
-    () =>
-      kegiatanId === ALL_EVENTS
-        ? eventsInPeriod
-        : eventsInPeriod.filter((e) => e.id === kegiatanId),
-    [eventsInPeriod, kegiatanId],
-  );
+  const loadEvents = useCallback(async () => {
+    try {
+      const payload = await requestApi("/activities");
+      if (!isRecord(payload) || payload.success !== true || !Array.isArray(payload.data)) {
+        throw new Error("Server tidak mengembalikan daftar kegiatan yang valid.");
+      }
+      const loadedEvents = payload.data.map(parseEvent);
+      setEvents(loadedEvents);
+      setKegiatanId((current) =>
+        current !== ALL_EVENTS && !loadedEvents.some((event) => event.id === current)
+          ? ALL_EVENTS
+          : current,
+      );
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Gagal memuat kegiatan.");
+      throw error;
+    }
+  }, []);
 
-  const memberRecaps: MemberRecap[] = useMemo(() => {
-    const total = selectedEvents.length;
-    return MEMBERS.map((member) => {
-      const hadir = selectedEvents.filter((e) => e.hadirIds.includes(member.id)).length;
-      return {
-        member,
-        hadir,
-        tidakHadir: total - hadir,
-        persen: toPercent(hadir, total),
-      };
-    });
-  }, [selectedEvents]);
+  const loadRecap = useCallback(async () => {
+    const query = new URLSearchParams();
+    if (kegiatanId !== ALL_EVENTS) {
+      query.set("eventId", kegiatanId);
+    } else if (periode !== ALL_PERIODS) {
+      query.set("periode", periode);
+    }
 
-  const summary = useMemo(() => {
-    const hadir = memberRecaps.reduce((sum, r) => sum + r.hadir, 0);
-    const tidakHadir = memberRecaps.reduce((sum, r) => sum + r.tidakHadir, 0);
-    return { hadir, tidakHadir, persen: toPercent(hadir, hadir + tidakHadir) };
-  }, [memberRecaps]);
+    const queryString = query.toString();
+    const suffix = queryString ? `?${queryString}` : "";
+    const result = parseRecap(await requestApi(`/attendance/recap${suffix}`));
+    setSummary(result.summary);
+    setMemberRecaps(result.memberRecaps);
+  }, [kegiatanId, periode]);
+
+  const refreshData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      await Promise.all([loadEvents(), loadRecap()]);
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Gagal memuat data rekap.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [loadEvents, loadRecap]);
+
+  useEffect(() => {
+    void Promise.resolve().then(refreshData);
+  }, [refreshData]);
 
   /* ---------- Aksi ---------- */
 
@@ -347,12 +467,11 @@ export default function RekapFix() {
   );
 
   const handleRefresh = useCallback(() => {
-    // TODO: ganti dengan fetch ulang data rekap dari API
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    void refreshData();
+  }, [refreshData]);
 
-  const hasData = selectedEvents.length > 0;
+  const hasData = summary.totalEvents > 0;
 
   /* ---------- Render ---------- */
 
@@ -395,6 +514,20 @@ export default function RekapFix() {
             />
           </View>
 
+          {loading ? (
+            <View className="items-center py-12">
+              <ActivityIndicator color="#4387C0" />
+              <Text className="mt-3 text-sm text-[#6B7690]">Memuat rekap...</Text>
+            </View>
+          ) : loadError ? (
+            <View className="mt-5 items-center rounded-3xl border border-[#E3E8F3] bg-white px-6 py-10">
+              <Text className="text-center text-sm text-[#D64545]">{loadError}</Text>
+              <Pressable onPress={() => { void refreshData(); }} className="mt-4 rounded-xl bg-[#4387C0] px-5 py-2.5">
+                <Text className="text-sm font-semibold text-white">Coba lagi</Text>
+              </Pressable>
+            </View>
+          ) : (
+          <>
           {/* Ringkasan kehadiran */}
           <Text className="mb-3 mt-6 text-lg font-bold text-[#0A0A6B]">Ringkasan kehadiran</Text>
           <View className="flex-row gap-3">
@@ -450,6 +583,8 @@ export default function RekapFix() {
                 </View>
               ))}
             </View>
+          )}
+          </>
           )}
         </View>
       </ScrollView>

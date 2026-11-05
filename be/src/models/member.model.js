@@ -6,6 +6,7 @@ const memberSchema = new mongoose.Schema(
     nim: { type: String, required: true, unique: true, trim: true },
     email: { type: String, trim: true, lowercase: true, sparse: true },
     passwordHash: { type: String, required: true },
+    role: { type: String, enum: ["Pengurus", "Anggota"] },
     jenisKelamin: { type: String, enum: ["Laki-laki", "Perempuan"] },
     tempatLahir: { type: String, trim: true },
     tanggalLahir: { type: Date },
