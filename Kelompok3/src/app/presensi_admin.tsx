@@ -622,98 +622,27 @@ export default function PresensiFix() {
 
       <ScrollView
         className="flex-1 bg-[#F6F8FC]"
-        contentContainerClassName="px-5 pb-6 pt-5"
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4387C0" />}
       >
-        {loading && events.length === 0 ? (
-          <View className="items-center py-12">
-            <ActivityIndicator color="#4387C0" />
-            <Text className="mt-3 text-sm text-[#6B7690]">Memuat kegiatan...</Text>
-          </View>
-        ) : loadError ? (
-          <View className="items-center rounded-3xl border border-[#E3E8F3] bg-white px-6 py-10">
-            <Text className="text-center text-sm text-[#D64545]">{loadError}</Text>
-            <Pressable onPress={() => { setLoading(true); void loadEvents(); }} className="mt-4 rounded-xl bg-[#4387C0] px-5 py-2.5">
-              <Text className="text-sm font-semibold text-white">Coba lagi</Text>
-            </Pressable>
-          </View>
-        ) : events.length === 0 ? (
-          <View className="items-center rounded-3xl border border-dashed border-[#D6DCF0] bg-white px-6 py-10">
-            <Feather name="calendar" size={24} color="#4387C0" />
-            <Text className="mt-3 text-sm font-semibold text-[#0A0A6B]">Belum ada kegiatan</Text>
-            <Text className="mt-1 text-center text-xs text-[#6B7690]">
-              Tambahkan kegiatan sebelum membuka sesi presensi.
-            </Text>
-          </View>
-        ) : (
-          <>
-            <Text className="mb-2 text-sm font-semibold text-[#0A0A6B]">Pilih kegiatan</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-              {events.map((event) => (
-                <Pressable
-                  key={event.id}
-                  onPress={() => setSelectedEventId(event.id)}
-                  className={`mr-2 rounded-xl border px-3 py-2 ${event.id === selectedEventId ? "border-[#2F63B0] bg-[#E8EEFB]" : "border-[#E3E8F3] bg-white"}`}
-                >
-                  <Text className={`text-xs font-semibold ${event.id === selectedEventId ? "text-[#2F63B0]" : "text-[#6B7690]"}`} numberOfLines={1}>
-                    {event.judul}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            {selectedEvent && (
-              <SessionCard session={selectedEvent} isOpen={isOpen} onToggle={handleToggleSession} />
-            )}
-          </>
-        )}
-
-        {/* Tombol Catat Kehadiran Manual (CREATE) */}
-        <Pressable
-          onPress={() => {
-            if (!isOpen) {
-              Alert.alert("Sesi belum dibuka", "Buka sesi presensi untuk mencatat kehadiran manual.");
-            } else if (membersError) {
-              Alert.alert("Gagal memuat anggota", membersError);
-            } else {
-              setModalVisible(true);
-            }
-          }}
-          disabled={!selectedEvent}
-          className="mt-4 flex-row items-center justify-center rounded-2xl bg-[#2F63B0] py-4 active:opacity-80 disabled:opacity-50"
-        >
-          <Feather name="user-plus" size={16} color="#FFFFFF" />
-          <Text className="ml-2 text-sm font-semibold text-white">Catat kehadiran manual</Text>
-        </Pressable>
+        {/* Kartu sesi aktif */}
+        <SessionCard session={ACTIVE_SESSION} isOpen={isOpen} onToggle={handleToggleSession} />
 
         {/* Tombol ekspor */}
-        <View className="mt-3 flex-row gap-3">
+        <View className="mt-4 flex-row gap-3">
           <ExportButton label="Ekspor Excel" icon="file-text" onPress={() => handleExport("Excel")} />
           <ExportButton label="Ekspor PDF" icon="file" onPress={() => handleExport("PDF")} />
         </View>
 
-        {/* Daftar kehadiran */}
-        <View className="mb-3 mt-6 flex-row items-center justify-between">
-          <Text className="text-lg font-bold text-[#0A0A6B]">Kehadiran anggota</Text>
-          <Text className="text-xs text-[#6B7690]">{totalLabel}</Text>
-        </View>
-
-        {recordsLoading ? (
-          <View className="items-center py-8">
-            <ActivityIndicator color="#4387C0" />
+          {/* Daftar kehadiran */}
+          <View className="mb-3 mt-6 flex-row items-center justify-between">
+            <Text className="text-lg font-bold text-[#0A0A6B]">Kehadiran anggota</Text>
+            <Text className="text-xs text-[#6B7690]">{totalLabel}</Text>
           </View>
-        ) : records.length === 0 ? (
+
+        {records.length === 0 ? (
           <EmptyAttendance isOpen={isOpen} />
         ) : (
-          records.map((item) => (
-            <AttendanceCard
-              key={item.id}
-              item={item}
-              onChangeStatus={handleChangeStatus}
-              onDelete={handleDeleteRecord}
-            />
-          ))
+          records.map((item) => <AttendanceCard key={item.id} item={item} />)
         )}
       </ScrollView>
 

@@ -370,7 +370,76 @@ function CalendarPicker({ value, onSelect }: any) {
   );
 }
 
-function TimePicker({ title, value, onConfirm, onCancel }: any) {
+/* ---------- Pemilih jam (kolom jam & menit, tanpa dependensi tambahan) ---------- */
+
+const ITEM_H = 44;
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5); // kelipatan 5 menit
+
+function WheelColumn({
+  items,
+  selected,
+  onSelect,
+}: {
+  items: number[];
+  selected: number;
+  onSelect: (n: number) => void;
+}) {
+  const ref = useRef<ScrollView>(null);
+
+  // Gulir otomatis ke nilai terpilih saat pertama kali tampil
+  useEffect(() => {
+    const idx = Math.max(0, items.indexOf(selected));
+    const t = setTimeout(
+      () => ref.current?.scrollTo({ y: Math.max(0, idx - 2) * ITEM_H, animated: false }),
+      0,
+    );
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <ScrollView
+      ref={ref}
+      className="flex-1"
+      style={{ height: ITEM_H * 5 }}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+    >
+      {items.map((n) => {
+        const isSel = n === selected;
+        return (
+          <Pressable
+            key={n}
+            onPress={() => onSelect(n)}
+            style={{ height: ITEM_H }}
+            className={`mx-1 items-center justify-center rounded-xl ${
+              isSel ? "bg-[#EEF0FF]" : "bg-transparent"
+            }`}
+          >
+            <Text
+              className={`text-lg ${isSel ? "font-bold text-[#4B45C9]" : "text-[#6B7690]"}`}
+            >
+              {pad(n)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+function TimePicker({
+  title,
+  value,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  value: string;
+  onConfirm: (v: string) => void;
+  onCancel: () => void;
+}) {
   const [h, m] = value ? value.split(":").map(Number) : [19, 0];
   const [hour, setHour] = useState(h);
   const [minute, setMinute] = useState(m - (m % 5));
@@ -523,23 +592,38 @@ export default function KegiatanFix() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const loadEvents = useCallback(async () => {
-    try {
-      const payload = await requestApi("/activities");
-      if (!isRecord(payload) || payload.success !== true || !Array.isArray(payload.data)) {
-        throw new Error("Server tidak mengembalikan daftar kegiatan yang valid.");
+  const handlePrimaryAction = useCallback(
+    (item: EventItem) => {
+      if (item.status === "dibuka") {
+        Alert.alert("Tutup sesi?", `Presensi "${item.nama}" akan ditutup dan kegiatan ditandai selesai.`, [
+          { text: "Batal", style: "cancel" },
+          { text: "Tutup sesi", style: "destructive", onPress: () => updateStatus(item.id, "selesai") },
+        ]);
+        return;
       }
-      const loadedEvents = payload.data.map((event) =>
-        parseEventResponse({ success: true, data: event }),
-      );
-      setEvents(loadedEvents);
-      setLoadError(null);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Gagal memuat kegiatan.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+
+      if (item.status === "belum") {
+        const sedangDibuka = events.find((e) => e.status === "dibuka");
+        if (sedangDibuka) {
+          Alert.alert(
+            "Masih ada sesi dibuka",
+            `Tutup sesi "${sedangDibuka.nama}" terlebih dahulu sebelum membuka sesi baru.`,
+          );
+          return;
+        }
+        updateStatus(item.id, "dibuka");
+        return;
+      }
+
+      // selesai -> buka halaman Rekap
+      router.push("/rekapfix");
+    },
+    [events, updateStatus, router],
+  );
+
+  const handleOpenDetail = useCallback((item: EventItem) => {
+    // TODO: navigasi ke halaman detail kegiatan
+    Alert.alert(item.nama, `${item.tanggal} · ${item.jam}${item.lokasi ? `\n${item.lokasi}` : ""}`);
   }, []);
 
   useEffect(() => {

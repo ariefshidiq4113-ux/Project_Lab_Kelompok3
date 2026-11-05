@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { login } from '@/services/auth.service';
 
 /** Hex untuk prop warna ikon (mirror tailwind.config.js). */
 const ICON = {
@@ -29,7 +30,7 @@ const ICON = {
 
 type Role = 'admin' | 'anggota';
 
-const ADMIN_HOME = '/presensi_admin'; // sesi presensi admin
+const ADMIN_HOME = '/Presensifix'; // sesi presensi admin
 const MEMBER_HOME = '/register-face'; // alur anggota (daftar wajah / dashboard)
 
 async function loginRequest(email: string, _password: string): Promise<{ role: Role }> {
@@ -96,16 +97,26 @@ export default function LoginScreen() {
     Keyboard.dismiss();
     setLoading(true);
     try {
-      const { role } = await loginRequest(email.trim(), password);
+      const member = await login(email.trim(), password);
 
-      if (role === 'admin') {
+      if (member.isAdmin) {
         // Akun admin: tanyakan dulu mau masuk sebagai Admin atau Anggota
         setShowRolePicker(true);
+      } else if (member.mustChangePassword) {
+        router.replace('/register-face' as any);
       } else {
         router.replace(MEMBER_HOME as any);
       }
-    } catch {
-      setPasswordError('Email atau password salah.');
+    } catch (err: any) {
+      const msg: string = err?.message ?? '';
+      if (msg.toLowerCase().includes('email') || msg.toLowerCase().includes('password') || err?.status === 401) {
+        setPasswordError('Email atau password salah.');
+      } else if (err?.status === undefined) {
+        // Network error — tidak bisa reach server
+        setPasswordError('Tidak dapat terhubung ke server. Periksa koneksi internet.');
+      } else {
+        setPasswordError(msg || 'Terjadi kesalahan. Coba lagi.');
+      }
     } finally {
       setLoading(false);
     }
@@ -114,7 +125,7 @@ export default function LoginScreen() {
   /** Dipanggil dari popup pilihan peran. */
   const enterAs = (target: Role) => {
     setShowRolePicker(false);
-    router.replace((target === 'admin' ? ADMIN_HOME : MEMBER_HOME) as any);
+    router.replace(target === 'admin' ? ADMIN_HOME : MEMBER_HOME);
   };
 
   return (
@@ -123,28 +134,27 @@ export default function LoginScreen() {
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-12"
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
+          <View className="flex-grow justify-center px-6 py-12">
+            {/* Logo & Branding */}
+            <View className="mb-8 items-center">
+              <Image
+                source={require('@/assets/images/himafor-logo.png')}
+                className="mb-4 h-[76px] w-[76px]"
+                contentFit="contain"
+                accessibilityLabel="Logo HIMAFOR"
+              />
+              <Text className="mb-1 text-[28px] font-extrabold tracking-wide text-navy">
+                HIMAFOR
+              </Text>
+              <Text className="text-[15px] font-normal text-subtle">
+                Attendance System
+              </Text>
+            </View>
 
-          {/* Logo & Branding */}
-          <View className="mb-8 items-center">
-            <Image
-              source={require('@/assets/images/himafor-logo.png')}
-              className="mb-4 h-[76px] w-[76px]"
-              contentFit="contain"
-              accessibilityLabel="Logo HIMAFOR"
-            />
-            <Text className="mb-1 text-[28px] font-extrabold tracking-wide text-navy">
-              HIMAFOR
-            </Text>
-            <Text className="text-[15px] font-normal text-subtle">
-              Attendance System
-            </Text>
-          </View>
-
-          {/* Form */}
-          <View className="w-full max-w-[440px] gap-4 self-center rounded-[22px] border border-line bg-surface p-[22px]">
+            {/* Form */}
+            <View className="w-full max-w-[440px] gap-4 self-center rounded-[22px] border border-line bg-surface p-[22px]">
 
             {/* Email field */}
             <View className="gap-1.5">
@@ -258,6 +268,7 @@ export default function LoginScreen() {
             <Text className="text-center text-[13px] text-subtle">
               Lupa password? Hubungi admin.
             </Text>
+          </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
