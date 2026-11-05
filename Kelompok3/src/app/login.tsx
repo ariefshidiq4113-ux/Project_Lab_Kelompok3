@@ -29,7 +29,7 @@ const ICON = {
 
 type Role = 'admin' | 'anggota';
 
-const ADMIN_HOME = '/Presensifix'; // sesi presensi admin
+const ADMIN_HOME = '/presensi_admin'; // sesi presensi admin
 const MEMBER_HOME = '/register-face'; // alur anggota (daftar wajah / dashboard)
 
 async function loginRequest(email: string, _password: string): Promise<{ role: Role }> {

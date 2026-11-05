@@ -1,5 +1,8 @@
 import express from "express";
+import activityRouter from "./routes/activity.route.js";
+import attendanceRouter from "./routes/attendance.route.js";
 import authRouter from "./routes/auth.route.js";
+import memberRouter from "./routes/member.route.js";
 import connectDb from "./services/db.js";
 import envVariables from "./utils/ENV.js";
 
@@ -15,6 +18,9 @@ app.get("/", (_req, res) => res.json({ status: "ok", app: "HIMAFOR Attendance AP
 
 // Routes
 app.use("/auth", authRouter);
+app.use("/activities", activityRouter);
+app.use("/attendance", attendanceRouter);
+app.use("/members", memberRouter);
 
 // 404 handler
 app.use((_req, res) => res.status(404).json({ message: "Route tidak ditemukan" }));

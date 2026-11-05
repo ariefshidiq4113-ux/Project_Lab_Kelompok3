@@ -3,10 +3,10 @@ import { usePathname, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 const TABS = [
-  { label: 'Sesi presensi', icon: 'clipboard', route: '/presensifix' },
-  { label: 'Kegiatan', icon: 'calendar', route: '/kegiatanfix' },
-  { label: 'Anggota', icon: 'users', route: '/anggotafix' },
-  { label: 'Rekap', icon: 'bar-chart-2', route: '/rekapfix' },
+  { label: 'Sesi presensi', icon: 'clipboard', route: '/presensi_admin' },
+  { label: 'Kegiatan', icon: 'calendar', route: '/kegiatan_admin' },
+  { label: 'Anggota', icon: 'users', route: '/anggota_admin' },
+  { label: 'Rekap', icon: 'bar-chart-2', route: '/rekap_admin' },
 ] as const;
 
 export function AdminTabBar() {
