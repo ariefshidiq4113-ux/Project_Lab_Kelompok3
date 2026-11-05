@@ -385,7 +385,7 @@ function WheelColumn({
   selected: number;
   onSelect: (n: number) => void;
 }) {
-  const ref = useRef<ScrollView>(null);
+  const ref = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   // Gulir otomatis ke nilai terpilih saat pertama kali tampil
   useEffect(() => {
@@ -616,7 +616,7 @@ export default function KegiatanFix() {
       }
 
       // selesai -> buka halaman Rekap
-      router.push("/rekapfix");
+      router.push("/rekap_admin");
     },
     [events, updateStatus, router],
   );
