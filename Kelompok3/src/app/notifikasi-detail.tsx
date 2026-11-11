@@ -172,7 +172,13 @@ export default function NotifikasiDetailScreen() {
           {/* CTA for sesi type */}
           {notif.type === 'sesi' && (
             <Pressable
-              onPress={() => router.push('/presensi' as any)}
+              onPress={() => router.push({
+                pathname: '/presensi' as any,
+                params: {
+                  kegiatanId: notif.id,
+                  kegiatanNama: notif.kegiatanNama ?? notif.subtitle,
+                },
+              })}
               accessibilityRole="button"
               accessibilityLabel="Presensi sekarang"
               style={({ pressed }) => [styles.ctaButton, pressed && { opacity: 0.8 }]}>
@@ -188,7 +194,13 @@ export default function NotifikasiDetailScreen() {
           {/* CTA for ditolak type */}
           {notif.type === 'ditolak' && (
             <Pressable
-              onPress={() => router.push('/presensi' as any)}
+              onPress={() => router.push({
+                pathname: '/presensi' as any,
+                params: {
+                  kegiatanId: notif.id,
+                  kegiatanNama: notif.kegiatanNama ?? notif.subtitle,
+                },
+              })}
               accessibilityRole="button"
               accessibilityLabel="Coba lagi presensi"
               style={({ pressed }) => [styles.ctaButton, styles.ctaRetry, pressed && { opacity: 0.8 }]}>
