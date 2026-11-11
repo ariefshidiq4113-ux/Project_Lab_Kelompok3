@@ -23,8 +23,9 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-// ✏️  GANTI INI sesuai environment kamu:
-export const BASE_URL = 'http://43.129.49.191:3005';
+import { API_BASE_URL } from '@/constants/api';
+
+export const BASE_URL = API_BASE_URL;
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -43,6 +44,10 @@ export async function apiFetch<T>(
   path: string,
   { method = 'GET', body, token }: ApiOptions = {}
 ): Promise<T> {
+  if (!BASE_URL) {
+    throw new Error('EXPO_PUBLIC_API_URL belum dikonfigurasi.');
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };

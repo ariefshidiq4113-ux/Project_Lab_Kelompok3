@@ -11,7 +11,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,6 +21,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   TextInput,
@@ -32,6 +33,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AdminTabBar } from "@/components/admin-tab-bar";
 import { HimaforHeader } from "@/components/himafor-header";
+import { API_BASE_URL } from "@/constants/api";
 
 /* ============================== TYPES & DATA ============================== */
 
@@ -52,8 +54,6 @@ interface EventForm {
   jam: string;
   lokasi: string;
 }
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -385,9 +385,8 @@ function WheelColumn({
   selected: number;
   onSelect: (n: number) => void;
 }) {
-  const ref = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const ref = useRef<ScrollViewInstance>(null);
 
-  // Gulir otomatis ke nilai terpilih saat pertama kali tampil
   useEffect(() => {
     const idx = Math.max(0, items.indexOf(selected));
     const t = setTimeout(
@@ -395,8 +394,7 @@ function WheelColumn({
       0,
     );
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [items, selected]);
 
   return (
     <ScrollView
@@ -451,11 +449,10 @@ function TimePicker({
         <Text className="text-3xl font-bold text-[#0F1B3D]">:</Text>
         <Text className="text-3xl font-bold text-[#4B45C9]">{pad(minute)}</Text>
       </View>
-      <View className="mt-4 flex-row gap-2 justify-center">
-        <Pressable onPress={() => setHour(hour > 0 ? hour - 1 : 23)} className="px-4 py-2 bg-gray-100 rounded"><Text>- Jam</Text></Pressable>
-        <Pressable onPress={() => setHour(hour < 23 ? hour + 1 : 0)} className="px-4 py-2 bg-gray-100 rounded"><Text>+ Jam</Text></Pressable>
-        <Pressable onPress={() => setMinute(minute > 0 ? minute - 5 : 55)} className="px-4 py-2 bg-gray-100 rounded"><Text>- Mnt</Text></Pressable>
-        <Pressable onPress={() => setMinute(minute < 55 ? minute + 5 : 0)} className="px-4 py-2 bg-gray-100 rounded"><Text>+ Mnt</Text></Pressable>
+      <View className="mt-4 flex-row gap-3">
+        <WheelColumn items={HOURS} selected={hour} onSelect={setHour} />
+        <Text className="pt-8 text-xl font-bold text-[#0F1B3D]">:</Text>
+        <WheelColumn items={MINUTES} selected={minute} onSelect={setMinute} />
       </View>
       <View className="mt-4 flex-row gap-3">
         <Pressable onPress={onCancel} className="flex-1 items-center rounded-xl border border-[#E3E8F3] py-3"><Text className="text-[#4B45C9] font-semibold">Batal</Text></Pressable>
@@ -592,38 +589,22 @@ export default function KegiatanFix() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handlePrimaryAction = useCallback(
-    (item: EventItem) => {
-      if (item.status === "dibuka") {
-        Alert.alert("Tutup sesi?", `Presensi "${item.nama}" akan ditutup dan kegiatan ditandai selesai.`, [
-          { text: "Batal", style: "cancel" },
-          { text: "Tutup sesi", style: "destructive", onPress: () => updateStatus(item.id, "selesai") },
-        ]);
-        return;
+  const loadEvents = useCallback(async () => {
+    try {
+      const payload = await requestApi("/activities");
+      if (!isRecord(payload) || payload.success !== true || !Array.isArray(payload.data)) {
+        throw new Error("Server tidak mengembalikan daftar kegiatan yang valid.");
       }
-
-      if (item.status === "belum") {
-        const sedangDibuka = events.find((e) => e.status === "dibuka");
-        if (sedangDibuka) {
-          Alert.alert(
-            "Masih ada sesi dibuka",
-            `Tutup sesi "${sedangDibuka.nama}" terlebih dahulu sebelum membuka sesi baru.`,
-          );
-          return;
-        }
-        updateStatus(item.id, "dibuka");
-        return;
-      }
-
-      // selesai -> buka halaman Rekap
-      router.push("/rekap_admin");
-    },
-    [events, updateStatus, router],
-  );
-
-  const handleOpenDetail = useCallback((item: EventItem) => {
-    // TODO: navigasi ke halaman detail kegiatan
-    Alert.alert(item.nama, `${item.tanggal} · ${item.jam}${item.lokasi ? `\n${item.lokasi}` : ""}`);
+      setEvents(payload.data.map((event) =>
+        parseEventResponse({ success: true, data: event }),
+      ));
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Gagal memuat kegiatan.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {

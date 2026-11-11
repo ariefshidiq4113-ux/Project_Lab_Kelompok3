@@ -18,15 +18,20 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Backend API
 
-Start the backend from the `be` directory with `npm run dev`. Set
-`EXPO_PUBLIC_API_URL` in the Expo app's `.env` file to the backend URL before
-starting Expo. For example, use `http://10.0.2.2:3000` for an Android emulator;
-for a physical device, use the computer's LAN IP address. Member and activity
-management and session attendance use the `/members`, `/activities`, and
-`/attendance` APIs. A new member's initial password is their NIM and must be
-changed at first login. Activity session status is derived from its attendance
-sessions. Recap data is loaded from `/attendance/recap`; its optional `periode`
-filter uses the `YYYY-MM` format, while `eventId` filters one activity.
+Start the backend from the `be` directory with `npm run dev`. Copy `.env.example`
+to `.env` in this app directory and set `EXPO_PUBLIC_API_URL` to the backend URL.
+For web on the same computer, use `http://localhost:3000`. For BlueStacks or a
+physical Android device, use the computer's LAN IPv4 address, for example
+`http://192.168.1.5:3000`; allow the backend port through Windows Firewall if
+needed. Android Studio's standard emulator can use `http://10.0.2.2:3000`.
+
+Restart Expo after changing `.env` (for example, `npx expo start --clear`) so the
+URL is included in the app bundle. Member and activity management and session
+attendance use the `/members`, `/activities`, and `/attendance` APIs. A new
+member's initial password is their NIM and must be changed at first login.
+Activity session status is derived from its attendance sessions. Recap data is
+loaded from `/attendance/recap`; its optional `periode` filter uses the `YYYY-MM`
+format, while `eventId` filters one activity.
 
 In the output, you'll find options to open the app in a
 

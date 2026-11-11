@@ -37,6 +37,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { AdminTabBar } from "@/components/admin-tab-bar";
 import { HimaforHeader } from "@/components/himafor-header";
+import { API_BASE_URL } from "@/constants/api";
 
 /* ============================== TYPES & DATA ============================== */
 
@@ -70,8 +71,6 @@ const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

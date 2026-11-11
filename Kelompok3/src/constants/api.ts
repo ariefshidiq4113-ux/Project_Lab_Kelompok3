@@ -1,14 +1,14 @@
-// ─── URL Backend ──────────────────────────────────────────────────────────────
-// Ganti dengan IP komputer yang menjalankan backend saat testing di HP
-// Contoh: 'http://192.168.1.5:3000'
-// Di browser/web: 'http://localhost:3000' sudah cukup
-export const API_BASE_URL = 'http://localhost:3000';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, '');
 
 // ─── Helper fetch dengan token ────────────────────────────────────────────────
 export async function apiFetch(
   path: string,
   options: RequestInit & { token?: string } = {}
 ): Promise<Response> {
+  if (!API_BASE_URL) {
+    throw new Error('EXPO_PUBLIC_API_URL belum dikonfigurasi.');
+  }
+
   const { token, ...fetchOptions } = options;
 
   const headers: Record<string, string> = {

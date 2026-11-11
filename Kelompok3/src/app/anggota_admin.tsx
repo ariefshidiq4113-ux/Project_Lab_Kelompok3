@@ -32,6 +32,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { AdminTabBar } from "@/components/admin-tab-bar";
 import { HimaforHeader } from "@/components/himafor-header";
+import { API_BASE_URL } from "@/constants/api";
 
 /* ============================== TYPES & DATA ============================== */
 
@@ -53,8 +54,6 @@ interface MemberForm {
   email: string;
   role: MemberRole;
 }
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

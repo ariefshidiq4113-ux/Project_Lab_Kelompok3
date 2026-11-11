@@ -30,13 +30,8 @@ const ICON = {
 
 type Role = 'admin' | 'anggota';
 
-const ADMIN_HOME = '/Presensifix'; // sesi presensi admin
+const ADMIN_HOME = '/presensi_admin'; // sesi presensi admin
 const MEMBER_HOME = '/register-face'; // alur anggota (daftar wajah / dashboard)
-
-async function loginRequest(email: string, _password: string): Promise<{ role: Role }> {
-  await new Promise((resolve) => setTimeout(resolve, 600));
-  return { role: email.toLowerCase().includes('admin') ? 'admin' : 'anggota' };
-}
 
 function validateEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);

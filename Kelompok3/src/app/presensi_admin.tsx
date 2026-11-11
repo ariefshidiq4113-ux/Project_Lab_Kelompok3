@@ -29,6 +29,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { AdminTabBar } from "@/components/admin-tab-bar";
 import { HimaforHeader } from "@/components/himafor-header";
+import { API_BASE_URL } from "@/constants/api";
 
 /* ============================== TYPES & DATA ============================== */
 
@@ -59,7 +60,6 @@ interface MemberOption {
   email: string;
 }
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 const STATUS_LABEL: Record<AttendanceStatus, string> = {
   hadir: "Hadir",
@@ -623,44 +623,101 @@ export default function PresensiFix() {
       <ScrollView
         className="flex-1 bg-[#F6F8FC]"
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#4387C0"
+          />
+        }
       >
         <View className="px-5 pb-6 pt-5">
-          {/* Kartu sesi aktif */}
-          <SessionCard session={ACTIVE_SESSION} isOpen={isOpen} onToggle={handleToggleSession} />
+          <Text className="mb-3 text-lg font-bold text-[#0A0A6B]">Pilih kegiatan</Text>
+          {loading && events.length === 0 ? (
+            <View className="items-center py-8">
+              <ActivityIndicator color="#4387C0" />
+              <Text className="mt-3 text-sm text-[#6B7690]">Memuat kegiatan...</Text>
+            </View>
+          ) : loadError ? (
+            <Text className="rounded-2xl bg-white p-4 text-sm text-[#D64545]">{loadError}</Text>
+          ) : events.length === 0 ? (
+            <Text className="rounded-2xl bg-white p-4 text-sm text-[#6B7690]">
+              Belum ada kegiatan.
+            </Text>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-2">
+                {events.map((event) => (
+                  <Pressable
+                    key={event.id}
+                    onPress={() => setSelectedEventId(event.id)}
+                    className={`rounded-full px-4 py-2 ${
+                      event.id === selectedEventId ? "bg-[#2F63B0]" : "bg-white"
+                    }`}
+                  >
+                    <Text
+                      className={`text-sm font-semibold ${
+                        event.id === selectedEventId ? "text-white" : "text-[#0A0A6B]"
+                      }`}
+                    >
+                      {event.judul}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+          )}
 
-          {/* Tombol ekspor */}
+          {selectedEvent ? (
+            <View className="mt-4">
+              <SessionCard
+                session={selectedEvent}
+                isOpen={isOpen === true}
+                onToggle={handleToggleSession}
+              />
+            </View>
+          ) : null}
+
           <View className="mt-4 flex-row gap-3">
             <ExportButton label="Ekspor Excel" icon="file-text" onPress={() => handleExport("Excel")} />
             <ExportButton label="Ekspor PDF" icon="file" onPress={() => handleExport("PDF")} />
           </View>
 
+          <Pressable
+            onPress={() => setModalVisible(true)}
+            disabled={!selectedEvent || !isOpen}
+            className="mt-3 flex-row items-center justify-center rounded-xl bg-[#2F63B0] py-3 disabled:opacity-50"
+          >
+            <Feather name="plus" size={16} color="#FFFFFF" />
+            <Text className="ml-2 text-sm font-semibold text-white">Catat kehadiran</Text>
+          </Pressable>
+
           {/* Daftar kehadiran */}
           <View className="mb-3 mt-6 flex-row items-center justify-between">
             <Text className="text-lg font-bold text-[#0A0A6B]">Kehadiran anggota</Text>
             <Text className="text-xs text-[#6B7690]">{totalLabel}</Text>
           </View>
 
-          {records.length === 0 ? (
-            <EmptyAttendance isOpen={isOpen} />
+          {membersError ? (
+            <Text className="mb-3 text-sm text-[#D64545]">{membersError}</Text>
+          ) : null}
+          {recordsLoading ? (
+            <View className="items-center py-8">
+              <ActivityIndicator color="#4387C0" />
+            </View>
+          ) : records.length === 0 ? (
+            <EmptyAttendance isOpen={isOpen === true} />
           ) : (
-            records.map((item) => <AttendanceCard key={item.id} item={item} />)
+            records.map((item) => (
+              <AttendanceCard
+                key={item.id}
+                item={item}
+                onChangeStatus={handleChangeStatus}
+                onDelete={handleDeleteRecord}
+              />
+            ))
           )}
         </View>
-<<<<<<< HEAD
-=======
-
-          {/* Daftar kehadiran */}
-          <View className="mb-3 mt-6 flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-[#0A0A6B]">Kehadiran anggota</Text>
-            <Text className="text-xs text-[#6B7690]">{totalLabel}</Text>
-          </View>
-
-        {records.length === 0 ? (
-          <EmptyAttendance isOpen={isOpen} />
-        ) : (
-          records.map((item) => <AttendanceCard key={item.id} item={item} />)
-        )}
->>>>>>> c20f6ed602488bf7f90d99d442b35901ba04b770
       </ScrollView>
 
       <SafeAreaView edges={["bottom"]} className="bg-white">
