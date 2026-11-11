@@ -1,8 +1,8 @@
-const { Schema, model } = require('mongoose');
+import mongoose from "mongoose";
 
-const faceTemplateSchema = new Schema(
+const faceTemplateSchema = new mongoose.Schema(
   {
-    memberId: { type: Schema.Types.ObjectId, ref: 'Member', required: true },
+    memberId: { type: mongoose.Schema.Types.ObjectId, ref: "Member", required: true },
     embedding: { type: Buffer, required: true, select: false }, // terenkripsi, lihat utils/crypto.js
     modelVersion: { type: String, required: true }, // mis. "mobilefacenet-tflite-v1"
     aktif: { type: Boolean, default: true },
@@ -17,4 +17,6 @@ faceTemplateSchema.index(
   { unique: true, partialFilterExpression: { aktif: true } }
 );
 
-module.exports = model('FaceTemplate', faceTemplateSchema);
+const FaceTemplate = mongoose.model("FaceTemplate", faceTemplateSchema, "facetemplates");
+
+export default FaceTemplate;

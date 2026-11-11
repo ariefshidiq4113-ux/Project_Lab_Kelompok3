@@ -1,29 +1,20 @@
 /**
- * kegiatanfix.tsx
+ * kegiatan_admin.tsx
  * ---------------------------------------------------------------------------
  * Halaman "Kegiatan" (Admin) — HIMAFOR Attendance System
  *
- * Stack     : React Native (Expo) + NativeWind (Tailwind CSS)
- * Dependensi: nativewind, react-native-safe-area-context, @expo/vector-icons
- *             (sama dengan presensifix.tsx, tidak ada dependensi baru)
- *
- * Fitur:
- *  - Daftar kegiatan dapat di-scroll (pull-to-refresh simulasi)
- *  - "Tambah kegiatan" membuka pop-up di tengah layar: nama, tanggal (kalender),
- *    jam mulai–selesai (pemilih jam), lokasi, dengan validasi dan tombol Simpan
- *  - "Buka sesi" / "Tutup sesi" mengubah status kegiatan (dengan konfirmasi)
- *  - Kegiatan selesai punya tombol "Lihat rekap"
- *  - Responsif: 1 kolom (HP) -> 2 kolom (tablet / layar lebar), konten dibatasi
- *    lebar maksimum dan diletakkan di tengah, ukuran font menyesuaikan lebar layar
- *
- * Pemakaian: <KegiatanFix /> sebagai screen, atau jadikan default export route.
+ * Fitur CRUD:
+ *  - [READ]   : Menampilkan daftar kegiatan[cite: 2].
+ *  - [CREATE] : Tombol "Tambah kegiatan" untuk membuat data baru[cite: 2].
+ *  - [UPDATE] : Ikon pensil (Edit) untuk mengubah nama, tanggal, jam, dan lokasi kegiatan.
+ *  - [DELETE] : Ikon tempat sampah (Hapus) untuk menghapus kegiatan (dengan konfirmasi).
  * ---------------------------------------------------------------------------
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -62,39 +53,94 @@ interface EventForm {
   lokasi: string;
 }
 
-/** Ganti dengan data dari API saat integrasi backend. */
-const INITIAL_EVENTS: EventItem[] = [
-  {
-    id: "1",
-    nama: "Rapat Pengurus HIMAFOR",
-    tanggal: "08 Okt 2026",
-    jam: "19:00–21:00",
-    lokasi: "Sekre HIMAFOR",
-    status: "dibuka",
-  },
-  {
-    id: "2",
-    nama: "Evaluasi Program Kerja",
-    tanggal: "10 Okt 2026",
-    jam: "19:30–21:30",
-    lokasi: "Sekre HIMAFOR",
-    status: "belum",
-  },
-  {
-    id: "3",
-    nama: "[Nama Kegiatan]",
-    tanggal: "[Tanggal]",
-    jam: "[Jam]",
-    status: "selesai",
-  },
-];
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+async function requestApi(path: string, init?: RequestInit): Promise<unknown> {
+  if (!API_BASE_URL) {
+    throw new Error("EXPO_PUBLIC_API_URL belum dikonfigurasi.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...init?.headers,
+    },
+  });
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message = isRecord(payload) && typeof payload.message === "string"
+      ? payload.message
+      : `Permintaan gagal (${response.status}).`;
+    throw new Error(message);
+  }
+  return payload;
+}
+
+function parseEventResponse(payload: unknown): EventItem {
+  if (!isRecord(payload) || payload.success !== true || !isRecord(payload.data)) {
+    throw new Error("Server tidak mengembalikan data kegiatan yang valid.");
+  }
+  const event = payload.data;
+  if (
+    typeof event.id !== "string" ||
+    typeof event.nama !== "string" ||
+    typeof event.tanggal !== "string" ||
+    typeof event.jam !== "string" ||
+    (event.status !== "dibuka" && event.status !== "belum" && event.status !== "selesai")
+  ) {
+    throw new Error("Format data kegiatan dari server tidak valid.");
+  }
+  const date = new Date(event.tanggal);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Tanggal kegiatan dari server tidak valid.");
+  }
+  return {
+    id: event.id,
+    nama: event.nama,
+    tanggal: formatDate({
+      y: date.getUTCFullYear(),
+      m: date.getUTCMonth(),
+      d: date.getUTCDate(),
+    }),
+    jam: event.jam,
+    lokasi: typeof event.lokasi === "string" ? event.lokasi : "",
+    status: event.status,
+  };
+}
+
+function toApiDate(value: string): string {
+  const match = /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/.exec(value);
+  const month = match ? BULAN_SINGKAT.indexOf(match[2]) : -1;
+  if (!match || month < 0) {
+    throw new Error("Format tanggal kegiatan tidak valid.");
+  }
+  const [, day, , year] = match;
+  return `${year}-${pad(month + 1)}-${pad(Number(day))}T00:00:00.000Z`;
+}
+
+function parseDisplayDate(value: string): DateParts | null {
+  const match = /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/.exec(value);
+  if (!match) return null;
+  const month = BULAN_SINGKAT.indexOf(match[2]);
+  const day = Number(match[1]);
+  const year = Number(match[3]);
+  if (month < 0 || day < 1 || day > new Date(year, month + 1, 0).getDate()) return null;
+  return { y: year, m: month, d: day };
+}
 
 const STATUS_META: Record<
   EventStatus,
   { label: string; bg: string; dot: string; text: string }
 > = {
   dibuka: { label: "Dibuka", bg: "bg-[#E3F6F1]", dot: "bg-[#2DB5A3]", text: "text-[#14705F]" },
-  belum: { label: "Belum dibuka", bg: "bg-[#FFF1D6]", dot: "bg-[#C77A00]", text: "text-[#8A5200]" },
+  belum: { label: "Belum", bg: "bg-[#FFF1D6]", dot: "bg-[#C77A00]", text: "text-[#8A5200]" },
   selesai: { label: "Selesai", bg: "bg-[#EDF0F5]", dot: "bg-[#8A94A6]", text: "text-[#5B667D]" },
 };
 
@@ -103,9 +149,9 @@ const STATUS_META: Record<
 function StatusBadge({ status }: { status: EventStatus }) {
   const m = STATUS_META[status];
   return (
-    <View className={`flex-row items-center rounded-full px-3 py-1 ${m.bg}`}>
+    <View className={`flex-row items-center rounded-full px-2.5 py-1 ${m.bg}`}>
       <View className={`mr-1.5 h-1.5 w-1.5 rounded-full ${m.dot}`} />
-      <Text className={`text-xs font-semibold ${m.text}`}>{m.label}</Text>
+      <Text className={`text-[10px] font-bold uppercase tracking-wider ${m.text}`}>{m.label}</Text>
     </View>
   );
 }
@@ -113,27 +159,33 @@ function StatusBadge({ status }: { status: EventStatus }) {
 interface EventCardProps {
   item: EventItem;
   onPrimaryAction: (item: EventItem) => void;
-  onPress: (item: EventItem) => void;
+  onEdit: (item: EventItem) => void;
+  onDelete: (item: EventItem) => void;
   titleSize: number;
 }
 
-function EventCard({ item, onPrimaryAction, onPress, titleSize }: EventCardProps) {
+function EventCard({ item, onPrimaryAction, onEdit, onDelete, titleSize }: EventCardProps) {
   return (
-    <Pressable
-      onPress={() => onPress(item)}
-      className="rounded-3xl border border-[#E3E8F3] bg-white p-4 active:bg-[#FAFBFE]"
-      accessibilityRole="button"
-      accessibilityLabel={`Detail kegiatan ${item.nama}`}
-    >
-      {/* Ikon kalender + badge status */}
-      <View className="flex-row items-center justify-between">
-        <View className="h-10 w-10 items-center justify-center rounded-xl bg-[#E8F0FB]">
-          <Feather name="calendar" size={18} color="#4387C0" />
+    <View className="rounded-3xl border border-[#E3E8F3] bg-white p-4">
+      {/* Header: Icon, Edit, Delete, Status */}
+      <View className="flex-row items-start justify-between">
+        <View className="h-11 w-11 items-center justify-center rounded-2xl bg-[#E8F0FB]">
+          <Feather name="calendar" size={20} color="#4387C0" />
         </View>
-        <StatusBadge status={item.status} />
+        <View className="flex-row items-center">
+          <Pressable onPress={() => onEdit(item)} className="p-2 active:opacity-50">
+            <Feather name="edit-2" size={16} color="#6B7690" />
+          </Pressable>
+          <Pressable onPress={() => onDelete(item)} className="p-2 active:opacity-50">
+            <Feather name="trash-2" size={16} color="#D8283A" />
+          </Pressable>
+          <View className="ml-1">
+            <StatusBadge status={item.status} />
+          </View>
+        </View>
       </View>
 
-      {/* Judul */}
+      {/* Detail Kegiatan */}
       <Text
         className="mt-4 font-bold text-[#0A0A6B]"
         style={{ fontSize: titleSize }}
@@ -141,16 +193,12 @@ function EventCard({ item, onPrimaryAction, onPress, titleSize }: EventCardProps
       >
         {item.nama}
       </Text>
-
-      {/* Tanggal & jam */}
       <View className="mt-2 flex-row items-center">
         <Feather name="clock" size={14} color="#8A94A6" />
         <Text className="ml-2 flex-1 text-sm text-[#6B7690]" numberOfLines={1}>
           {item.tanggal} · {item.jam}
         </Text>
       </View>
-
-      {/* Lokasi (opsional) */}
       {item.lokasi ? (
         <View className="mt-1.5 flex-row items-center">
           <Feather name="map-pin" size={14} color="#8A94A6" />
@@ -162,43 +210,35 @@ function EventCard({ item, onPrimaryAction, onPress, titleSize }: EventCardProps
 
       <View className="my-3 h-px bg-[#EDF0F7]" />
 
-      {/* Tombol aksi sesuai status */}
+      {/* Tombol Aksi Status */}
       {item.status === "dibuka" && (
         <Pressable
           onPress={() => onPrimaryAction(item)}
           className="flex-row items-center justify-center rounded-xl border border-[#D6DCEA] bg-white py-3 active:bg-[#F3F6FC]"
-          accessibilityRole="button"
-          accessibilityLabel="Tutup sesi"
         >
           <Feather name="stop-circle" size={16} color="#4387C0" />
           <Text className="ml-2 text-sm font-semibold text-[#4387C0]">Tutup sesi</Text>
         </Pressable>
       )}
-
       {item.status === "belum" && (
         <Pressable
           onPress={() => onPrimaryAction(item)}
           className="flex-row items-center justify-center rounded-xl bg-[#4387C0] py-3 active:opacity-80"
-          accessibilityRole="button"
-          accessibilityLabel="Buka sesi"
         >
           <Feather name="play-circle" size={16} color="#FFFFFF" />
           <Text className="ml-2 text-sm font-semibold text-white">Buka sesi</Text>
         </Pressable>
       )}
-
       {item.status === "selesai" && (
         <Pressable
           onPress={() => onPrimaryAction(item)}
           className="flex-row items-center justify-center rounded-xl border border-[#D6DCEA] bg-white py-3 active:bg-[#F3F6FC]"
-          accessibilityRole="button"
-          accessibilityLabel="Lihat rekap"
         >
           <Feather name="bar-chart-2" size={16} color="#4387C0" />
           <Text className="ml-2 text-sm font-semibold text-[#4387C0]">Lihat rekap</Text>
         </Pressable>
       )}
-    </Pressable>
+    </View>
   );
 }
 
@@ -212,61 +252,28 @@ function EmptyEvents({ onAdd }: { onAdd: () => void }) {
       <Text className="mt-1 text-center text-xs text-[#6B7690]">
         Tambahkan kegiatan pertama agar sesi presensi dapat dibuka.
       </Text>
-      <Pressable
-        onPress={onAdd}
-        className="mt-4 rounded-xl bg-[#4387C0] px-5 py-2.5 active:opacity-80"
-      >
+      <Pressable onPress={onAdd} className="mt-4 rounded-xl bg-[#4387C0] px-5 py-2.5 active:opacity-80">
         <Text className="text-sm font-semibold text-white">Tambah kegiatan</Text>
       </Pressable>
     </View>
   );
 }
 
-/* ========================= POP-UP TAMBAH KEGIATAN ========================= */
+/* ========================= POP-UP FORM KEGIATAN ========================= */
 
-/** Warna ungu tombol Simpan & aksen pada pop-up (sesuai desain). */
-const PRIMARY = "#4B45C9";
-
-const BULAN = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-];
+const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const BULAN_SINGKAT = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-const HARI = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
-interface DateParts {
-  y: number;
-  m: number; // 0-11
-  d: number;
-}
-
-interface Draft {
-  nama: string;
-  tanggal: DateParts | null;
-  mulai: string; // "HH:MM"
-  selesai: string; // "HH:MM"
-  lokasi: string;
-}
-
+interface DateParts { y: number; m: number; d: number; }
+interface Draft { nama: string; tanggal: DateParts | null; mulai: string; selesai: string; lokasi: string; }
 type DraftErrors = Partial<Record<"nama" | "tanggal" | "jam", string>>;
 type PickerKind = null | "tanggal" | "mulai" | "selesai";
 
 const EMPTY_DRAFT: Draft = { nama: "", tanggal: null, mulai: "", selesai: "", lokasi: "" };
-
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatDate = (p: DateParts) => `${pad(p.d)} ${BULAN_SINGKAT[p.m]} ${p.y}`;
 
-/* ---------- Pembungkus label + error ---------- */
-
-function FieldShell({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
+function FieldShell({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <View className="mb-4">
       <Text className="mb-2 text-sm font-semibold text-[#0F1B3D]">{label}</Text>
@@ -275,27 +282,9 @@ function FieldShell({
     </View>
   );
 }
+const rowClass = (error?: string) => `flex-row items-center rounded-xl border bg-white px-4 ${error ? "border-[#D64545]" : "border-[#E3E8F3]"}`;
 
-const rowClass = (error?: string) =>
-  `flex-row items-center rounded-xl border bg-white px-4 ${
-    error ? "border-[#D64545]" : "border-[#E3E8F3]"
-  }`;
-
-/* ---------- Input teks (nama & lokasi) ---------- */
-
-function TextField({
-  value,
-  placeholder,
-  icon,
-  error,
-  onChangeText,
-}: {
-  value: string;
-  placeholder: string;
-  icon?: keyof typeof Feather.glyphMap;
-  error?: string;
-  onChangeText: (v: string) => void;
-}) {
+function TextField({ value, placeholder, icon, error, onChangeText }: any) {
   return (
     <View className={rowClass(error)}>
       <TextInput
@@ -310,22 +299,10 @@ function TextField({
   );
 }
 
-/* ---------- Kolom tanggal (membuka kalender) ---------- */
-
-function DateField({
-  value,
-  error,
-  onPress,
-}: {
-  value: DateParts | null;
-  error?: string;
-  onPress: () => void;
-}) {
+function DateField({ value, error, onPress }: any) {
   return (
     <Pressable onPress={onPress} className={`${rowClass(error)} active:bg-[#F6F8FC]`}>
-      <Text
-        className={`flex-1 py-3.5 text-sm ${value ? "text-[#0A0A6B]" : "text-[#8A94A6]"}`}
-      >
+      <Text className={`flex-1 py-3.5 text-sm ${value ? "text-[#0A0A6B]" : "text-[#8A94A6]"}`}>
         {value ? formatDate(value) : "Pilih tanggal"}
       </Text>
       <Feather name="calendar" size={18} color="#8A94A6" />
@@ -333,61 +310,30 @@ function DateField({
   );
 }
 
-/* ---------- Kolom jam mulai–selesai (membuka pemilih jam) ---------- */
-
-function TimeRangeField({
-  mulai,
-  selesai,
-  error,
-  onPick,
-}: {
-  mulai: string;
-  selesai: string;
-  error?: string;
-  onPick: (which: "mulai" | "selesai") => void;
-}) {
+function TimeRangeField({ mulai, selesai, error, onPick }: any) {
   return (
     <View className={rowClass(error)}>
       <Pressable onPress={() => onPick("mulai")} hitSlop={6} className="py-3.5">
-        <Text className={`text-sm ${mulai ? "text-[#0A0A6B]" : "text-[#8A94A6]"}`}>
-          {mulai || "--:--"}
-        </Text>
+        <Text className={`text-sm ${mulai ? "text-[#0A0A6B]" : "text-[#8A94A6]"}`}>{mulai || "--:--"}</Text>
       </Pressable>
       <Text className="mx-3 text-sm text-[#8A94A6]">–</Text>
       <Pressable onPress={() => onPick("selesai")} hitSlop={6} className="py-3.5">
-        <Text className={`text-sm ${selesai ? "text-[#0A0A6B]" : "text-[#8A94A6]"}`}>
-          {selesai || "--:--"}
-        </Text>
+        <Text className={`text-sm ${selesai ? "text-[#0A0A6B]" : "text-[#8A94A6]"}`}>{selesai || "--:--"}</Text>
       </Pressable>
       <View className="flex-1" />
-      <Pressable
-        onPress={() => onPick(mulai && !selesai ? "selesai" : "mulai")}
-        hitSlop={10}
-        accessibilityLabel="Pilih jam"
-      >
+      <Pressable onPress={() => onPick(mulai && !selesai ? "selesai" : "mulai")} hitSlop={10}>
         <Feather name="clock" size={18} color="#8A94A6" />
       </Pressable>
     </View>
   );
 }
 
-/* ---------- Kalender sederhana (tanpa dependensi tambahan) ---------- */
-
-function CalendarPicker({
-  value,
-  onSelect,
-}: {
-  value: DateParts | null;
-  onSelect: (d: DateParts) => void;
-}) {
+// Komponen Picker Tanggal & Jam bawaan disederhanakan
+function CalendarPicker({ value, onSelect }: any) {
   const today = new Date();
-  const [view, setView] = useState({
-    y: value?.y ?? today.getFullYear(),
-    m: value?.m ?? today.getMonth(),
-  });
-
+  const [view, setView] = useState({ y: value?.y ?? today.getFullYear(), m: value?.m ?? today.getMonth() });
   const cells = useMemo(() => {
-    const offset = (new Date(view.y, view.m, 1).getDay() + 6) % 7; // Senin = kolom pertama
+    const offset = (new Date(view.y, view.m, 1).getDay() + 6) % 7;
     const total = new Date(view.y, view.m + 1, 0).getDate();
     const arr: (number | null)[] = Array(offset).fill(null);
     for (let d = 1; d <= total; d++) arr.push(d);
@@ -395,88 +341,31 @@ function CalendarPicker({
     return arr;
   }, [view]);
 
-  const shift = (delta: number) =>
-    setView((v) => {
-      const next = new Date(v.y, v.m + delta, 1);
-      return { y: next.getFullYear(), m: next.getMonth() };
-    });
-
-  const isSelected = (d: number) =>
-    !!value && value.y === view.y && value.m === view.m && value.d === d;
-  const isToday = (d: number) =>
-    today.getFullYear() === view.y && today.getMonth() === view.m && today.getDate() === d;
-
   return (
     <View>
-      {/* Navigasi bulan */}
       <View className="mb-3 flex-row items-center justify-between">
-        <Pressable
-          onPress={() => shift(-1)}
-          hitSlop={8}
-          className="h-9 w-9 items-center justify-center rounded-full bg-[#F1F4FA]"
-          accessibilityLabel="Bulan sebelumnya"
-        >
+        <Pressable onPress={() => setView({ ...view, m: view.m - 1 })} className="h-9 w-9 items-center justify-center rounded-full bg-[#F1F4FA]">
           <Feather name="chevron-left" size={18} color="#0A0A6B" />
         </Pressable>
-        <Text className="text-base font-bold text-[#0F1B3D]">
-          {BULAN[view.m]} {view.y}
-        </Text>
-        <Pressable
-          onPress={() => shift(1)}
-          hitSlop={8}
-          className="h-9 w-9 items-center justify-center rounded-full bg-[#F1F4FA]"
-          accessibilityLabel="Bulan berikutnya"
-        >
+        <Text className="text-base font-bold text-[#0F1B3D]">{BULAN[view.m]} {view.y}</Text>
+        <Pressable onPress={() => setView({ ...view, m: view.m + 1 })} className="h-9 w-9 items-center justify-center rounded-full bg-[#F1F4FA]">
           <Feather name="chevron-right" size={18} color="#0A0A6B" />
         </Pressable>
       </View>
-
-      {/* Nama hari */}
-      <View className="mb-1 flex-row">
-        {HARI.map((h) => (
-          <View key={h} style={{ width: `${100 / 7}%` }} className="items-center py-1">
-            <Text className="text-[11px] font-semibold text-[#8A94A6]">{h}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Tanggal */}
       <View className="flex-row flex-wrap">
         {cells.map((d, i) => (
           <View key={i} style={{ width: `${100 / 7}%` }} className="items-center py-0.5">
-            {d === null ? (
-              <View className="h-10 w-10" />
-            ) : (
+            {d !== null && (
               <Pressable
                 onPress={() => onSelect({ y: view.y, m: view.m, d })}
-                className={`h-10 w-10 items-center justify-center rounded-full ${
-                  isSelected(d)
-                    ? "bg-[#4B45C9]"
-                    : isToday(d)
-                    ? "border border-[#4B45C9]"
-                    : "bg-transparent"
-                }`}
-                accessibilityLabel={`Pilih tanggal ${d}`}
+                className={`h-10 w-10 items-center justify-center rounded-full ${value?.d === d && value.m === view.m ? "bg-[#4B45C9]" : "bg-transparent"}`}
               >
-                <Text
-                  className={`text-sm ${
-                    isSelected(d) ? "font-bold text-white" : "text-[#0F1B3D]"
-                  }`}
-                >
-                  {d}
-                </Text>
+                <Text className={`text-sm ${value?.d === d && value.m === view.m ? "font-bold text-white" : "text-[#0F1B3D]"}`}>{d}</Text>
               </Pressable>
             )}
           </View>
         ))}
       </View>
-
-      <Pressable
-        onPress={() => onSelect({ y: today.getFullYear(), m: today.getMonth(), d: today.getDate() })}
-        className="mt-3 items-center rounded-xl bg-[#EEF0FF] py-3 active:opacity-80"
-      >
-        <Text className="text-sm font-semibold text-[#4B45C9]">Hari ini</Text>
-      </Pressable>
     </View>
   );
 }
@@ -553,215 +442,128 @@ function TimePicker({
 }) {
   const [h, m] = value ? value.split(":").map(Number) : [19, 0];
   const [hour, setHour] = useState(h);
-  const [minute, setMinute] = useState(m - (m % 5)); // bulatkan ke kelipatan 5
-
+  const [minute, setMinute] = useState(m - (m % 5));
   return (
     <View>
       <Text className="mb-3 text-base font-bold text-[#0F1B3D]">{title}</Text>
-
-      <View className="flex-row items-center">
-        <WheelColumn items={HOURS} selected={hour} onSelect={setHour} />
-        <Text className="mx-1 text-xl font-bold text-[#0F1B3D]">:</Text>
-        <WheelColumn items={MINUTES} selected={minute} onSelect={setMinute} />
+      <View className="flex-row justify-center gap-4">
+        <Text className="text-3xl font-bold text-[#4B45C9]">{pad(hour)}</Text>
+        <Text className="text-3xl font-bold text-[#0F1B3D]">:</Text>
+        <Text className="text-3xl font-bold text-[#4B45C9]">{pad(minute)}</Text>
       </View>
-
+      <View className="mt-4 flex-row gap-2 justify-center">
+        <Pressable onPress={() => setHour(hour > 0 ? hour - 1 : 23)} className="px-4 py-2 bg-gray-100 rounded"><Text>- Jam</Text></Pressable>
+        <Pressable onPress={() => setHour(hour < 23 ? hour + 1 : 0)} className="px-4 py-2 bg-gray-100 rounded"><Text>+ Jam</Text></Pressable>
+        <Pressable onPress={() => setMinute(minute > 0 ? minute - 5 : 55)} className="px-4 py-2 bg-gray-100 rounded"><Text>- Mnt</Text></Pressable>
+        <Pressable onPress={() => setMinute(minute < 55 ? minute + 5 : 0)} className="px-4 py-2 bg-gray-100 rounded"><Text>+ Mnt</Text></Pressable>
+      </View>
       <View className="mt-4 flex-row gap-3">
-        <Pressable
-          onPress={onCancel}
-          className="flex-1 items-center rounded-xl border border-[#E3E8F3] bg-white py-3 active:bg-[#F6F8FC]"
-        >
-          <Text className="text-sm font-semibold text-[#4B45C9]">Batal</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onConfirm(`${pad(hour)}:${pad(minute)}`)}
-          className="flex-1 items-center rounded-xl bg-[#4B45C9] py-3 active:opacity-80"
-        >
-          <Text className="text-sm font-semibold text-white">Pilih</Text>
-        </Pressable>
+        <Pressable onPress={onCancel} className="flex-1 items-center rounded-xl border border-[#E3E8F3] py-3"><Text className="text-[#4B45C9] font-semibold">Batal</Text></Pressable>
+        <Pressable onPress={() => onConfirm(`${pad(hour)}:${pad(minute)}`)} className="flex-1 items-center rounded-xl bg-[#4B45C9] py-3"><Text className="text-white font-semibold">Pilih</Text></Pressable>
       </View>
     </View>
   );
 }
 
-/* ---------- Pop-up utama ---------- */
-
-interface AddEventModalProps {
+interface EventModalProps {
   visible: boolean;
+  initialData: EventItem | null;
+  submitting: boolean;
   onClose: () => void;
-  onSubmit: (form: EventForm) => void;
+  onSubmit: (form: EventForm, isEdit: boolean) => Promise<boolean>;
 }
 
-function AddEventModal({ visible, onClose, onSubmit }: AddEventModalProps) {
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+function EventFormModal({ visible, initialData, submitting, onClose, onSubmit }: EventModalProps) {
+  const [draft, setDraft] = useState<Draft>(() => {
+    if (!initialData) return EMPTY_DRAFT;
+    const [mulai, selesai] = initialData.jam.split(/[–-]/);
+    return {
+      nama: initialData.nama,
+      tanggal: parseDisplayDate(initialData.tanggal),
+      mulai: mulai?.trim() || "",
+      selesai: selesai?.trim() || "",
+      lokasi: initialData.lokasi || "",
+    };
+  });
   const [errors, setErrors] = useState<DraftErrors>({});
   const [picker, setPicker] = useState<PickerKind>(null);
 
-  const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
-    setDraft((d) => ({ ...d, [key]: value }));
-    const errKey = key === "mulai" || key === "selesai" ? "jam" : key;
-    if (errKey in errors) setErrors((e) => ({ ...e, [errKey]: undefined }));
-  };
+  const update = (key: keyof Draft, value: any) => setDraft((d) => ({ ...d, [key]: value }));
 
-  const openPicker = (kind: Exclude<PickerKind, null>) => {
-    Keyboard.dismiss();
-    setPicker(kind);
-  };
-
-  const reset = () => {
-    setDraft(EMPTY_DRAFT);
-    setErrors({});
-    setPicker(null);
-  };
-
-  const close = () => {
-    reset();
-    onClose();
-  };
-
-  const submit = () => {
+  const submit = async () => {
     const next: DraftErrors = {};
     if (!draft.nama.trim()) next.nama = "Nama kegiatan wajib diisi";
     if (!draft.tanggal) next.tanggal = "Tanggal wajib dipilih";
     if (!draft.mulai || !draft.selesai) next.jam = "Jam mulai dan selesai wajib diisi";
-    else if (draft.selesai <= draft.mulai) next.jam = "Jam selesai harus setelah jam mulai";
-
     setErrors(next);
-    if (Object.keys(next).length > 0 || !draft.tanggal) return;
-
-    onSubmit({
-      nama: draft.nama.trim(),
-      tanggal: formatDate(draft.tanggal),
-      jam: `${draft.mulai}–${draft.selesai}`,
-      lokasi: draft.lokasi.trim(),
-    });
-    reset();
+    
+    if (Object.keys(next).length === 0 && draft.tanggal) {
+      const saved = await onSubmit({
+        nama: draft.nama.trim(),
+        tanggal: formatDate(draft.tanggal),
+        jam: `${draft.mulai}–${draft.selesai}`,
+        lokasi: draft.lokasi.trim(),
+      }, !!initialData);
+      if (saved) onClose();
+    }
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={() => (picker ? setPicker(null) : close())}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
-      >
-        {/* Overlay gelap: ketuk di luar dialog untuk menutup */}
-        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" onPress={close}>
-          {/* Dialog di tengah layar (Pressable kosong agar ketukan di dalam tidak menutup) */}
-          <Pressable
-            onPress={() => {}}
-            className="max-h-[92%] w-full overflow-hidden rounded-3xl bg-white"
-            style={{ maxWidth: 480 }}
-          >
-            {/* Header */}
-            <View className="flex-row items-center justify-between px-5 pb-3 pt-5">
-              <Text className="text-xl font-bold text-[#0F1B3D]">Tambah kegiatan</Text>
-              <Pressable
-                onPress={close}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Tutup pop up"
-              >
-                <Feather name="x-circle" size={26} color="#D8283A" />
-              </Pressable>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" onPress={onClose}>
+          <Pressable onPress={() => {}} className="max-h-[92%] w-full overflow-hidden rounded-3xl bg-white" style={{ maxWidth: 480 }}>
+            
+            <View className="flex-row items-center justify-between px-5 pb-3 pt-5 border-b border-[#E3E8F3]">
+              <Text className="text-xl font-bold text-[#0F1B3D]">{initialData ? "Edit Kegiatan" : "Tambah Kegiatan"}</Text>
+              <Pressable onPress={onClose}><Feather name="x-circle" size={26} color="#D8283A" /></Pressable>
             </View>
-            <View className="h-px bg-[#E3E8F3]" />
 
-            {/* Isi form (bisa di-scroll di layar pendek) */}
-            <ScrollView
-              style={{ flexGrow: 0 }}
-              className="px-5 pt-4"
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView className="px-5 pt-4">
               <FieldShell label="Nama kegiatan" error={errors.nama}>
-                <TextField
-                  value={draft.nama}
-                  placeholder="Masukkan nama kegiatan"
-                  error={errors.nama}
-                  onChangeText={(v) => update("nama", v)}
-                />
+                <TextField value={draft.nama} placeholder="Masukkan nama kegiatan" onChangeText={(v: string) => update("nama", v)} />
               </FieldShell>
-
               <FieldShell label="Tanggal" error={errors.tanggal}>
-                <DateField
-                  value={draft.tanggal}
-                  error={errors.tanggal}
-                  onPress={() => openPicker("tanggal")}
-                />
+                <DateField value={draft.tanggal} onPress={() => setPicker("tanggal")} />
               </FieldShell>
-
               <FieldShell label="Jam mulai–selesai" error={errors.jam}>
-                <TimeRangeField
-                  mulai={draft.mulai}
-                  selesai={draft.selesai}
-                  error={errors.jam}
-                  onPick={openPicker}
-                />
+                <TimeRangeField mulai={draft.mulai} selesai={draft.selesai} onPick={setPicker} />
               </FieldShell>
-
               <FieldShell label="Lokasi">
-                <TextField
-                  value={draft.lokasi}
-                  placeholder="Masukkan lokasi kegiatan"
-                  icon="map-pin"
-                  onChangeText={(v) => update("lokasi", v)}
-                />
+                <TextField value={draft.lokasi} placeholder="Masukkan lokasi" icon="map-pin" onChangeText={(v: string) => update("lokasi", v)} />
               </FieldShell>
             </ScrollView>
 
-            {/* Tombol simpan */}
-            <View className="px-5 pb-5 pt-1">
+            <View className="px-5 pb-5 pt-3">
               <Pressable
-                onPress={submit}
-                className="flex-row items-center justify-center rounded-xl py-4 active:opacity-80"
-                style={{
-                  backgroundColor: PRIMARY,
-                  shadowColor: PRIMARY,
-                  shadowOpacity: 0.35,
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 4 },
-                  elevation: 6,
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Simpan kegiatan"
+                onPress={() => { void submit(); }}
+                disabled={submitting}
+                className="flex-row items-center justify-center rounded-xl bg-[#4B45C9] py-4 active:opacity-80 disabled:opacity-60"
               >
-                <Feather name="check" size={18} color="#FFFFFF" />
-                <Text className="ml-2 text-[15px] font-semibold text-white">Simpan</Text>
+                {submitting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Feather name="check" size={18} color="#FFFFFF" />
+                    <Text className="ml-2 text-[15px] font-semibold text-white">Simpan</Text>
+                  </>
+                )}
               </Pressable>
             </View>
           </Pressable>
         </Pressable>
 
-        {/* Pemilih tanggal / jam: tampil di atas dialog */}
         {picker !== null && (
-          <View
-            style={StyleSheet.absoluteFill}
-            className="items-center justify-center bg-black/40 px-6"
-          >
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setPicker(null)} />
+          <View style={StyleSheet.absoluteFill} className="items-center justify-center bg-black/40 px-6">
             <View className="w-full rounded-3xl bg-white p-4" style={{ maxWidth: 360 }}>
               {picker === "tanggal" ? (
-                <CalendarPicker
-                  value={draft.tanggal}
-                  onSelect={(d) => {
-                    update("tanggal", d);
-                    setPicker(null);
-                  }}
-                />
+                <CalendarPicker value={draft.tanggal} onSelect={(d: any) => { update("tanggal", d); setPicker(null); }} />
               ) : (
-                <TimePicker
-                  key={picker}
-                  title={picker === "mulai" ? "Jam mulai" : "Jam selesai"}
-                  value={picker === "mulai" ? draft.mulai : draft.selesai}
-                  onCancel={() => setPicker(null)}
-                  onConfirm={(v) => {
-                    update(picker, v);
-                    setPicker(null);
-                  }}
+                <TimePicker 
+                  title={picker === "mulai" ? "Jam Mulai" : "Jam Selesai"} 
+                  value={picker === "mulai" ? draft.mulai : draft.selesai} 
+                  onCancel={() => setPicker(null)} 
+                  onConfirm={(v: any) => { update(picker, v); setPicker(null); }} 
                 />
               )}
             </View>
@@ -778,24 +580,17 @@ export default function KegiatanFix() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-  // ---- Responsif ----
-  // < 768  : HP      -> 1 kolom
-  // >= 768 : tablet  -> 2 kolom, konten maksimum 960px dan di tengah
   const columns = width >= 768 ? 2 : 1;
   const titleSize = width >= 768 ? 20 : width < 360 ? 16 : 18;
-  const sidePadding = width >= 768 ? 24 : 20;
 
-  const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
+  // STATE CRUD
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  const countLabel = useMemo(() => `${events.length} kegiatan`, [events.length]);
-
-  /* ---------- Aksi ---------- */
-
-  const updateStatus = useCallback((id: string, status: EventStatus) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)));
-  }, []);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const handlePrimaryAction = useCallback(
     (item: EventItem) => {
@@ -831,79 +626,161 @@ export default function KegiatanFix() {
     Alert.alert(item.nama, `${item.tanggal} · ${item.jam}${item.lokasi ? `\n${item.lokasi}` : ""}`);
   }, []);
 
-  const handleAddEvent = useCallback((form: EventForm) => {
-    const baru: EventItem = {
-      id: Date.now().toString(),
-      nama: form.nama,
-      tanggal: form.tanggal,
-      jam: form.jam,
-      lokasi: form.lokasi || undefined,
-      status: "belum",
-    };
-    setEvents((prev) => [baru, ...prev]);
-    setModalVisible(false);
-  }, []);
+  useEffect(() => {
+    void Promise.resolve().then(loadEvents);
+  }, [loadEvents]);
 
   const handleRefresh = useCallback(() => {
-    // TODO: ganti dengan fetch ulang data dari API
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
+    void loadEvents();
+  }, [loadEvents]);
+
+  /* ---------- Aksi UPDATE Status ---------- */
+  const updateStatus = useCallback(async (item: EventItem, status: EventStatus) => {
+    try {
+      const updatedEvent = parseEventResponse(await requestApi(
+        `/activities/${encodeURIComponent(item.id)}/status`,
+        { method: "PATCH", body: JSON.stringify({ status }) },
+      ));
+      setEvents((previous) =>
+        previous.map((event) => event.id === updatedEvent.id ? updatedEvent : event),
+      );
+    } catch (error) {
+      Alert.alert(
+        "Gagal mengubah sesi",
+        error instanceof Error ? error.message : "Terjadi kesalahan saat mengubah status sesi.",
+      );
+    }
   }, []);
 
-  /* ---------- Render ---------- */
+  const handlePrimaryAction = useCallback((item: EventItem) => {
+    if (item.status === "dibuka") {
+      Alert.alert("Tutup sesi?", `Presensi "${item.nama}" akan ditutup.`, [
+        { text: "Batal", style: "cancel" },
+        { text: "Tutup sesi", style: "destructive", onPress: () => { void updateStatus(item, "selesai"); } },
+      ]);
+    } else if (item.status === "belum") {
+      const sedangDibuka = events.find((e) => e.status === "dibuka");
+      if (sedangDibuka) {
+        Alert.alert("Masih ada sesi dibuka", `Tutup sesi "${sedangDibuka.nama}" terlebih dahulu.`);
+        return;
+      }
+      void updateStatus(item, "dibuka");
+    } else {
+      router.push("/rekap_admin");
+    }
+  }, [events, updateStatus, router]);
 
+  /* ---------- Aksi CREATE & UPDATE Data ---------- */
+  const openAddModal = () => {
+    setSelectedEvent(null);
+    setModalVisible(true);
+  };
+
+  const openEditModal = (item: EventItem) => {
+    setSelectedEvent(item);
+    setModalVisible(true);
+  };
+
+  const handleFormSubmit = async (form: EventForm, isEdit: boolean): Promise<boolean> => {
+    setSubmitting(true);
+    try {
+      const body = JSON.stringify({
+        ...form,
+        tanggal: toApiDate(form.tanggal),
+      });
+      const updatedEvent = isEdit && selectedEvent
+        ? parseEventResponse(await requestApi(`/activities/${encodeURIComponent(selectedEvent.id)}`, {
+            method: "PUT",
+            body,
+          }))
+        : parseEventResponse(await requestApi("/activities", { method: "POST", body }));
+
+      setEvents((previous) =>
+        isEdit
+          ? previous.map((event) => event.id === updatedEvent.id ? updatedEvent : event)
+          : [updatedEvent, ...previous],
+      );
+      setModalVisible(false);
+      return true;
+    } catch (error) {
+      Alert.alert(
+        "Gagal menyimpan kegiatan",
+        error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan kegiatan.",
+      );
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /* ---------- Aksi DELETE ---------- */
+  const handleDeleteEvent = (item: EventItem) => {
+    Alert.alert("Hapus Kegiatan?", `Data "${item.nama}" akan diarsipkan dan tidak ditampilkan lagi.`, [
+      { text: "Batal", style: "cancel" },
+      {
+        text: "Hapus",
+        style: "destructive",
+        onPress: () => {
+          void requestApi(`/activities/${encodeURIComponent(item.id)}`, { method: "DELETE" })
+            .then(() => setEvents((previous) => previous.filter((event) => event.id !== item.id)))
+            .catch((error: unknown) => {
+              Alert.alert(
+                "Gagal menghapus kegiatan",
+                error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus kegiatan.",
+              );
+            });
+        },
+      },
+    ]);
+  };
+
+  /* ---------- Render ---------- */
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       <HimaforHeader role="Admin" />
 
       <ScrollView
         className="flex-1 bg-[#F6F8FC]"
-        contentContainerStyle={{
-          paddingHorizontal: sidePadding,
-          paddingTop: 20,
-          paddingBottom: 24,
-        }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4387C0" />
-        }
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4387C0" />}
       >
-        {/* Wrapper responsif: lebar penuh di HP, maksimum 960 di layar besar */}
         <View className="w-full self-center" style={{ maxWidth: 960 }}>
-          {/* Tombol tambah kegiatan */}
-          <Pressable
-            onPress={() => setModalVisible(true)}
-            className="flex-row items-center justify-center rounded-2xl bg-[#4387C0] py-4 active:opacity-80"
-            accessibilityRole="button"
-            accessibilityLabel="Tambah kegiatan"
-          >
+          
+          <Pressable onPress={openAddModal} className="flex-row items-center justify-center rounded-2xl bg-[#4387C0] py-4 active:opacity-80">
             <Feather name="plus" size={18} color="#FFFFFF" />
             <Text className="ml-2 text-[15px] font-semibold text-white">Tambah kegiatan</Text>
           </Pressable>
 
-          {/* Judul daftar */}
           <View className="mb-3 mt-5 flex-row items-center justify-between">
             <Text className="text-lg font-bold text-[#0A0A6B]">Daftar kegiatan</Text>
-            <Text className="text-xs text-[#6B7690]">{countLabel}</Text>
+            <Text className="text-xs text-[#6B7690]">{events.length} kegiatan</Text>
           </View>
 
-          {/* Daftar kegiatan (grid 1 / 2 kolom) */}
-          {events.length === 0 ? (
-            <EmptyEvents onAdd={() => setModalVisible(true)} />
+          {loading && events.length === 0 ? (
+            <View className="items-center py-12">
+              <ActivityIndicator color="#4387C0" />
+              <Text className="mt-3 text-sm text-[#6B7690]">Memuat kegiatan...</Text>
+            </View>
+          ) : loadError ? (
+            <View className="items-center rounded-3xl border border-[#E3E8F3] bg-white px-6 py-10">
+              <Text className="text-center text-sm text-[#D64545]">{loadError}</Text>
+              <Pressable onPress={() => { setLoading(true); void loadEvents(); }} className="mt-4 rounded-xl bg-[#4387C0] px-5 py-2.5">
+                <Text className="text-sm font-semibold text-white">Coba lagi</Text>
+              </Pressable>
+            </View>
+          ) : events.length === 0 ? (
+            <EmptyEvents onAdd={openAddModal} />
           ) : (
             <View className="-m-1.5 flex-row flex-wrap">
               {events.map((item) => (
-                <View
-                  key={item.id}
-                  className="p-1.5"
-                  style={{ width: `${100 / columns}%` }}
-                >
+                <View key={item.id} className="p-1.5" style={{ width: `${100 / columns}%` }}>
                   <EventCard
                     item={item}
                     titleSize={titleSize}
                     onPrimaryAction={handlePrimaryAction}
-                    onPress={handleOpenDetail}
+                    onEdit={openEditModal}
+                    onDelete={handleDeleteEvent}
                   />
                 </View>
               ))}
@@ -916,10 +793,13 @@ export default function KegiatanFix() {
         <AdminTabBar />
       </SafeAreaView>
 
-      <AddEventModal
+      <EventFormModal
+        key={`${modalVisible ? "open" : "closed"}-${selectedEvent?.id ?? "new"}`}
         visible={modalVisible}
+        initialData={selectedEvent}
+        submitting={submitting}
         onClose={() => setModalVisible(false)}
-        onSubmit={handleAddEvent}
+        onSubmit={handleFormSubmit}
       />
     </SafeAreaView>
   );

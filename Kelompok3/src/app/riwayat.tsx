@@ -1,5 +1,12 @@
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 import {
   AttendanceRecord,
@@ -28,7 +35,7 @@ interface PresensiResponse {
   data: PresensiItem[];
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatTanggal(isoString: string): string {
   try {
     return new Date(isoString).toLocaleDateString('id-ID', {
@@ -41,23 +48,29 @@ function formatTanggal(isoString: string): string {
   }
 }
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function RiwayatScreen() {
-  const [filter, setFilter]     = useState<HistoryFilter>('Semua');
-  const [records, setRecords]   = useState<AttendanceRecord[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter] = useState<HistoryFilter>('Semua');
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // ── Fetch dari API ──────────────────────────────────────────────────────────
   const fetchRiwayat = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     setError(null);
 
     try {
       const token = await getToken();
-      const json = await apiFetch<PresensiResponse>('/presensi/me', { token });
+      const json = await apiFetch<PresensiResponse>('/presensi/me', {
+        token,
+      });
 
       const mapped: AttendanceRecord[] = json.data.map((item) => ({
         title: item.kegiatanNama,
@@ -66,26 +79,37 @@ export default function RiwayatScreen() {
       }));
 
       setRecords(mapped);
-    } catch (err: any) {
-      setError(err?.message ?? 'Gagal memuat riwayat presensi.');
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Gagal memuat riwayat presensi.',
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
+  // ── Load pertama kali ───────────────────────────────────────────────────────
   useEffect(() => {
-    fetchRiwayat();
+    void fetchRiwayat();
   }, [fetchRiwayat]);
 
   // ── Filter ──────────────────────────────────────────────────────────────────
   const visibleRecords = useMemo(() => {
-    if (filter === 'Hadir')       return records.filter((r) => r.present);
-    if (filter === 'Tidak hadir') return records.filter((r) => !r.present);
+    if (filter === 'Hadir') {
+      return records.filter((record) => record.present);
+    }
+
+    if (filter === 'Tidak hadir') {
+      return records.filter((record) => !record.present);
+    }
+
     return records;
   }, [records, filter]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <MainScreen activePath="/riwayat">
       <ScrollView
@@ -94,13 +118,19 @@ export default function RiwayatScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => fetchRiwayat(true)}
+            onRefresh={() => void fetchRiwayat(true)}
             tintColor="#101477"
           />
-        }>
+        }
+      >
         <View className="pt-[22px] px-5 pb-6">
           <PageTitle>Riwayat presensi</PageTitle>
-          <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
+
+          <FilterChips
+            options={FILTERS}
+            selected={filter}
+            onSelect={setFilter}
+          />
 
           {/* Loading */}
           {loading && (
@@ -112,7 +142,13 @@ export default function RiwayatScreen() {
           {/* Error */}
           {!loading && error && (
             <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-              <Text style={{ color: '#C0394F', fontSize: 14, textAlign: 'center' }}>
+              <Text
+                style={{
+                  color: '#C0394F',
+                  fontSize: 14,
+                  textAlign: 'center',
+                }}
+              >
                 {error}
               </Text>
             </View>
@@ -131,7 +167,10 @@ export default function RiwayatScreen() {
           {!loading && !error && (
             <View>
               {visibleRecords.map((record, index) => (
-                <HistoryCard key={`${record.present}-${index}`} record={record} />
+                <HistoryCard
+                  key={`${record.present}-${index}`}
+                  record={record}
+                />
               ))}
             </View>
           )}

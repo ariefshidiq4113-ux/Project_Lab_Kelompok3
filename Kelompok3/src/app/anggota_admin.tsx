@@ -1,29 +1,25 @@
 /**
- * anggotafix.tsx
+ * anggota_admin.tsx
  * ---------------------------------------------------------------------------
  * Halaman "Kelola Anggota" (Admin) — HIMAFOR Attendance System
  *
- * Stack     : React Native (Expo) + NativeWind (Tailwind CSS)
- * Dependensi: nativewind, react-native-safe-area-context, @expo/vector-icons
- *             (sama dengan presensifix.tsx & kegiatanfix.tsx, tanpa dependensi baru)
- *
- * Fitur:
- *  - Pencarian anggota berdasarkan nama atau email (real-time, tombol hapus teks)
- *  - Jumlah anggota ikut berubah sesuai hasil pencarian
- *  - "Reset wajah" (dengan konfirmasi) mengubah status data wajah menjadi "Belum"
- *  - Empty state saat hasil pencarian kosong / belum ada anggota
- *  - Daftar dapat di-scroll + pull-to-refresh
- *  - Responsif: 1 kolom (HP) -> 2 kolom (tablet / layar lebar), konten dibatasi
- *    lebar maksimum dan diletakkan di tengah
- *
- * Pemakaian: <AnggotaFix /> sebagai screen, atau jadikan default export route.
+ * Fitur CRUD:
+ *  - [READ]   : Menampilkan daftar anggota & pencarian real-time.
+ *  - [CREATE] : Tombol & modal "Tambah anggota" untuk membuat data baru.
+ *  - [UPDATE] : Tombol Edit untuk mengubah nama, email, dan peran anggota,
+ *               serta tombol Reset Wajah.
+ *  - [DELETE] : Tombol Hapus anggota dengan konfirmasi.
  * ---------------------------------------------------------------------------
  */
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -44,19 +40,78 @@ type FaceStatus = "terdaftar" | "belum";
 
 interface Member {
   id: string;
+  nim: string;
   nama: string;
   email: string;
   role: MemberRole;
   wajah: FaceStatus;
 }
 
-/** Data contoh. Ganti dengan data anggota dari database / API. */
-const INITIAL_MEMBERS: Member[] = [
-  { id: "1", nama: "Ahmad Fauzi", email: "ahmad.fauzi@mail.com", role: "Pengurus", wajah: "terdaftar" },
-  { id: "2", nama: "Siti Nurhaliza", email: "siti.nurhaliza@mail.com", role: "Anggota", wajah: "terdaftar" },
-  { id: "3", nama: "Rizky Pratama", email: "rizky.pratama@mail.com", role: "Anggota", wajah: "belum" },
-  { id: "4", nama: "Dewi Lestari", email: "dewi.lestari@mail.com", role: "Anggota", wajah: "belum" },
-];
+interface MemberForm {
+  nim: string;
+  nama: string;
+  email: string;
+  role: MemberRole;
+}
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parseMember(value: unknown): Member {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    typeof value.nim !== "string" ||
+    typeof value.nama !== "string" ||
+    typeof value.email !== "string" ||
+    (value.role !== "Pengurus" && value.role !== "Anggota") ||
+    (value.wajah !== "terdaftar" && value.wajah !== "belum")
+  ) {
+    throw new Error("Format data anggota dari server tidak valid.");
+  }
+  return {
+    id: value.id,
+    nim: value.nim,
+    nama: value.nama,
+    email: value.email,
+    role: value.role,
+    wajah: value.wajah,
+  };
+}
+
+async function requestApi(path: string, init?: RequestInit): Promise<unknown> {
+  if (!API_BASE_URL) {
+    throw new Error("EXPO_PUBLIC_API_URL belum dikonfigurasi.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...init?.headers,
+    },
+  });
+  const payload: unknown = await response.json();
+
+  if (!response.ok) {
+    const message = isRecord(payload) && typeof payload.message === "string"
+      ? payload.message
+      : `Permintaan gagal (${response.status}).`;
+    throw new Error(message);
+  }
+  return payload;
+}
+
+function parseMemberResponse(payload: unknown): Member {
+  if (!isRecord(payload) || payload.success !== true) {
+    throw new Error("Server tidak mengembalikan data anggota yang valid.");
+  }
+  return parseMember(payload.data);
+}
 
 /* =============================== SUB-COMPONENTS ============================ */
 
@@ -118,48 +173,61 @@ function FaceBadge({ status }: { status: FaceStatus }) {
 interface MemberCardProps {
   item: Member;
   onResetFace: (item: Member) => void;
+  onEdit: (item: Member) => void;
+  onDelete: (item: Member) => void;
   nameSize: number;
 }
 
-function MemberCard({ item, onResetFace, nameSize }: MemberCardProps) {
+function MemberCard({ item, onResetFace, onEdit, onDelete, nameSize }: MemberCardProps) {
   return (
     <View className="rounded-3xl border border-[#E3E8F3] bg-white p-4">
-      {/* Avatar + identitas + peran */}
-      <View className="flex-row items-center">
-        <View className="h-12 w-12 items-center justify-center rounded-full bg-[#E8F0FB]">
-          <Feather name="user" size={22} color="#4387C0" />
+      {/* Baris Atas: Avatar + Identitas + Tombol Edit/Hapus */}
+      <View className="flex-row items-start justify-between">
+        <View className="flex-row items-center flex-1 pr-2">
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-[#E8F0FB]">
+            <Feather name="user" size={22} color="#4387C0" />
+          </View>
+          <View className="ml-3 flex-1">
+            <Text
+              className="font-bold text-[#0A0A6B]"
+              style={{ fontSize: nameSize }}
+              numberOfLines={1}
+            >
+              {item.nama}
+            </Text>
+            <Text className="mt-0.5 text-xs text-[#6B7690]" numberOfLines={1}>
+              {item.email}
+            </Text>
+          </View>
         </View>
-        <View className="ml-3 flex-1">
-          <Text
-            className="font-bold text-[#0A0A6B]"
-            style={{ fontSize: nameSize }}
-            numberOfLines={1}
-          >
-            {item.nama}
-          </Text>
-          <Text className="mt-0.5 text-xs text-[#6B7690]" numberOfLines={1}>
-            {item.email}
-          </Text>
+
+        {/* Tombol Aksi (Edit & Delete) */}
+        <View className="flex-row items-center">
+          <Pressable onPress={() => onEdit(item)} className="p-2 active:opacity-50">
+            <Feather name="edit-2" size={16} color="#6B7690" />
+          </Pressable>
+          <Pressable onPress={() => onDelete(item)} className="p-2 active:opacity-50">
+            <Feather name="trash-2" size={16} color="#D8283A" />
+          </Pressable>
         </View>
-        <Text className="ml-2 text-xs font-semibold text-[#3B82C4]">{item.role}</Text>
       </View>
 
       <View className="my-3 h-px bg-[#EDF0F7]" />
 
-      {/* Data wajah */}
+      {/* Peran & Status Wajah */}
       <View className="flex-row items-center justify-between">
+        <Text className="text-xs font-semibold text-[#3B82C4]">{item.role}</Text>
         <View className="flex-row items-center">
-          <Feather name="maximize" size={16} color="#8A94A6" />
-          <Text className="ml-2 text-sm text-[#6B7690]">Data wajah</Text>
+          <Text className="mr-2 text-xs text-[#6B7690]">Wajah:</Text>
+          <FaceBadge status={item.wajah} />
         </View>
-        <FaceBadge status={item.wajah} />
       </View>
 
-      {/* Tombol reset hanya muncul jika data wajah sudah terdaftar */}
+      {/* Tombol reset wajah jika sudah terdaftar */}
       {item.wajah === "terdaftar" && (
         <Pressable
           onPress={() => onResetFace(item)}
-          className="mt-3 flex-row items-center justify-center rounded-xl bg-[#FDE7EA] py-3.5 active:opacity-70"
+          className="mt-3 flex-row items-center justify-center rounded-xl bg-[#FDE7EA] py-3 active:opacity-70"
           accessibilityRole="button"
           accessibilityLabel={`Reset wajah ${item.nama}`}
         >
@@ -171,7 +239,7 @@ function MemberCard({ item, onResetFace, nameSize }: MemberCardProps) {
   );
 }
 
-function EmptyState({ searching, query }: { searching: boolean; query: string }) {
+function EmptyState({ searching, query, onAdd }: { searching: boolean; query: string; onAdd: () => void }) {
   return (
     <View className="items-center rounded-3xl border border-dashed border-[#D6DCF0] bg-white px-6 py-12">
       <View className="h-14 w-14 items-center justify-center rounded-full bg-[#E8F0FB]">
@@ -183,9 +251,145 @@ function EmptyState({ searching, query }: { searching: boolean; query: string })
       <Text className="mt-1 text-center text-xs text-[#6B7690]">
         {searching
           ? `Tidak ada hasil untuk "${query}". Coba kata kunci lain.`
-          : "Data anggota akan tampil di sini setelah tersedia."}
+          : "Tambahkan anggota pertama untuk mulai mengelola sistem."}
       </Text>
+      {!searching && (
+        <Pressable onPress={onAdd} className="mt-4 rounded-xl bg-[#4387C0] px-5 py-2.5 active:opacity-80">
+          <Text className="text-sm font-semibold text-white">Tambah anggota</Text>
+        </Pressable>
+      )}
     </View>
+  );
+}
+
+/* ========================= MODAL FORM TAMBAH/EDIT ========================= */
+
+interface MemberModalProps {
+  visible: boolean;
+  initialData: Member | null;
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: (form: MemberForm, isEdit: boolean) => Promise<boolean>;
+}
+
+function MemberFormModal({ visible, initialData, submitting, onClose, onSubmit }: MemberModalProps) {
+  const [nim, setNim] = useState(initialData?.nim ?? "");
+  const [nama, setNama] = useState(initialData?.nama ?? "");
+  const [email, setEmail] = useState(initialData?.email ?? "");
+  const [role, setRole] = useState<MemberRole>(initialData?.role ?? "Anggota");
+  const [error, setError] = useState("");
+
+  const handleSave = async () => {
+    if (!nama.trim() || !email.trim()) {
+      setError("Nama dan email wajib diisi.");
+      return;
+    }
+    if (!initialData && !nim.trim()) {
+      setError("NIM wajib diisi.");
+      return;
+    }
+    const saved = await onSubmit(
+      { nim: nim.trim(), nama: nama.trim(), email: email.trim(), role },
+      !!initialData,
+    );
+    if (saved) onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1">
+        <Pressable className="flex-1 items-center justify-center bg-black/50 px-4" onPress={onClose}>
+          <Pressable onPress={() => {}} className="w-full max-w-md overflow-hidden rounded-3xl bg-white p-6">
+            
+            {/* Header Modal */}
+            <View className="flex-row items-center justify-between pb-4 border-b border-[#E3E8F3]">
+              <Text className="text-xl font-bold text-[#0F1B3D]">
+                {initialData ? "Edit Anggota" : "Tambah Anggota"}
+              </Text>
+              <Pressable onPress={onClose}>
+                <Feather name="x-circle" size={24} color="#D8283A" />
+              </Pressable>
+            </View>
+
+            {/* Form Input */}
+            <View className="py-4">
+              {error ? <Text className="mb-3 text-xs text-[#D64545]">{error}</Text> : null}
+
+              {!initialData && (
+                <>
+                  <Text className="mb-2 text-sm font-semibold text-[#0F1B3D]">NIM</Text>
+                  <TextInput
+                    value={nim}
+                    onChangeText={setNim}
+                    placeholder="Masukkan NIM"
+                    placeholderTextColor="#8A94A6"
+                    keyboardType="number-pad"
+                    className="mb-4 rounded-xl border border-[#E3E8F3] bg-white px-4 py-3.5 text-sm text-[#0A0A6B]"
+                  />
+                  <Text className="mb-4 -mt-2 text-xs text-[#6B7690]">
+                    Password awal anggota adalah NIM dan wajib diganti saat login.
+                  </Text>
+                </>
+              )}
+
+              <Text className="mb-2 text-sm font-semibold text-[#0F1B3D]">Nama lengkap</Text>
+              <TextInput
+                value={nama}
+                onChangeText={setNama}
+                placeholder="Masukkan nama lengkap"
+                placeholderTextColor="#8A94A6"
+                className="mb-4 rounded-xl border border-[#E3E8F3] bg-white px-4 py-3.5 text-sm text-[#0A0A6B]"
+              />
+
+              <Text className="mb-2 text-sm font-semibold text-[#0F1B3D]">Email</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Masukkan email"
+                placeholderTextColor="#8A94A6"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                className="mb-4 rounded-xl border border-[#E3E8F3] bg-white px-4 py-3.5 text-sm text-[#0A0A6B]"
+              />
+
+              <Text className="mb-2 text-sm font-semibold text-[#0F1B3D]">Peran (Role)</Text>
+              <View className="flex-row gap-3">
+                {(["Anggota", "Pengurus"] as MemberRole[]).map((r) => (
+                  <Pressable
+                    key={r}
+                    onPress={() => setRole(r)}
+                    className={`flex-1 items-center rounded-xl border py-3 ${
+                      role === r ? "border-[#4387C0] bg-[#E8F0FB]" : "border-[#E3E8F3] bg-white"
+                    }`}
+                  >
+                    <Text className={`text-sm font-semibold ${role === r ? "text-[#4387C0]" : "text-[#6B7690]"}`}>
+                      {r}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            {/* Tombol Simpan */}
+            <Pressable
+              onPress={() => { void handleSave(); }}
+              disabled={submitting}
+              className="mt-2 flex-row items-center justify-center rounded-xl bg-[#4387C0] py-4 active:opacity-80 disabled:opacity-60"
+            >
+              {submitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Feather name="check" size={18} color="#FFFFFF" />
+                  <Text className="ml-2 text-[15px] font-semibold text-white">Simpan</Text>
+                </>
+              )}
+            </Pressable>
+
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -194,21 +398,44 @@ function EmptyState({ searching, query }: { searching: boolean; query: string })
 export default function AnggotaFix() {
   const { width } = useWindowDimensions();
 
-  // ---- Responsif ----
-  // < 768  : HP      -> 1 kolom
-  // >= 768 : tablet  -> 2 kolom, konten maksimum 960px dan di tengah
   const columns = width >= 768 ? 2 : 1;
   const nameSize = width >= 768 ? 18 : width < 360 ? 14 : 16;
   const sidePadding = width >= 768 ? 24 : 20;
 
-  const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
+  // STATE CRUD
+  const [members, setMembers] = useState<Member[]>([]);
   const [query, setQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // State Modal CRUD
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+
+  const loadMembers = useCallback(async () => {
+    try {
+      const payload = await requestApi("/members");
+      if (!isRecord(payload) || payload.success !== true || !Array.isArray(payload.data)) {
+        throw new Error("Server tidak mengembalikan daftar anggota yang valid.");
+      }
+      setMembers(payload.data.map(parseMember));
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Gagal memuat data anggota.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadMembers);
+  }, [loadMembers]);
 
   /* ---------- Pencarian ---------- */
-
   const trimmedQuery = query.trim();
-
   const filtered = useMemo(() => {
     if (!trimmedQuery) return members;
     const q = trimmedQuery.toLowerCase();
@@ -217,7 +444,76 @@ export default function AnggotaFix() {
     );
   }, [members, trimmedQuery]);
 
-  /* ---------- Aksi ---------- */
+  /* ---------- Aksi CRUD Handler ---------- */
+
+  const handleOpenAdd = () => {
+    setSelectedMember(null);
+    setModalVisible(true);
+  };
+
+  const handleOpenEdit = (item: Member) => {
+    setSelectedMember(item);
+    setModalVisible(true);
+  };
+
+  const handleFormSubmit = async (form: MemberForm, isEdit: boolean): Promise<boolean> => {
+    setSubmitting(true);
+    try {
+      const member = isEdit && selectedMember
+        ? parseMemberResponse(await requestApi(`/members/${encodeURIComponent(selectedMember.id)}`, {
+            method: "PUT",
+            body: JSON.stringify({ nama: form.nama, email: form.email, role: form.role }),
+          }))
+        : parseMemberResponse(await requestApi("/members", {
+            method: "POST",
+            body: JSON.stringify(form),
+          }));
+
+      setMembers((previous) =>
+        isEdit
+          ? previous.map((item) => (item.id === member.id ? member : item))
+          : [member, ...previous],
+      );
+      setModalVisible(false);
+      return true;
+    } catch (error) {
+      Alert.alert(
+        "Gagal menyimpan anggota",
+        error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan anggota.",
+      );
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deleteMember = async (item: Member) => {
+    try {
+      await requestApi(`/members/${encodeURIComponent(item.id)}`, { method: "DELETE" });
+      setMembers((previous) => previous.filter((member) => member.id !== item.id));
+    } catch (error) {
+      Alert.alert(
+        "Gagal menghapus anggota",
+        error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus anggota.",
+      );
+    }
+  };
+
+  const handleDeleteMember = (item: Member) => {
+    // [DELETE]
+    Alert.alert(
+      "Hapus Anggota?",
+      `Data "${item.nama}" akan dinonaktifkan dan tidak ditampilkan lagi.`,
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: () => { void deleteMember(item); },
+        },
+      ]
+    );
+  };
 
   const handleResetFace = useCallback((item: Member) => {
     Alert.alert(
@@ -229,10 +525,19 @@ export default function AnggotaFix() {
           text: "Reset wajah",
           style: "destructive",
           onPress: () => {
-            // TODO: panggil API untuk menghapus face embedding anggota di server
-            setMembers((prev) =>
-              prev.map((m) => (m.id === item.id ? { ...m, wajah: "belum" } : m)),
-            );
+            void requestApi(`/members/${encodeURIComponent(item.id)}/reset-face`, {
+              method: "PATCH",
+            }).then((payload) => {
+              const updatedMember = parseMemberResponse(payload);
+              setMembers((previous) =>
+                previous.map((member) => member.id === updatedMember.id ? updatedMember : member),
+              );
+            }).catch((error: unknown) => {
+              Alert.alert(
+                "Gagal mereset wajah",
+                error instanceof Error ? error.message : "Terjadi kesalahan saat mereset wajah.",
+              );
+            });
           },
         },
       ],
@@ -240,10 +545,9 @@ export default function AnggotaFix() {
   }, []);
 
   const handleRefresh = useCallback(() => {
-    // TODO: ganti dengan fetch ulang data anggota dari API
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    void loadMembers();
+  }, [loadMembers]);
 
   /* ---------- Render ---------- */
 
@@ -265,8 +569,17 @@ export default function AnggotaFix() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#4387C0" />
         }
       >
-        {/* Wrapper responsif: lebar penuh di HP, maksimum 960 di layar besar */}
         <View className="w-full self-center" style={{ maxWidth: 960 }}>
+          
+          {/* Tombol Tambah Anggota */}
+          <Pressable
+            onPress={handleOpenAdd}
+            className="mb-5 flex-row items-center justify-center rounded-2xl bg-[#4387C0] py-4 active:opacity-80"
+          >
+            <Feather name="user-plus" size={18} color="#FFFFFF" />
+            <Text className="ml-2 text-[15px] font-semibold text-white">Tambah anggota</Text>
+          </Pressable>
+
           <SearchBar value={query} onChange={setQuery} />
 
           {/* Judul daftar + jumlah */}
@@ -276,13 +589,31 @@ export default function AnggotaFix() {
           </View>
 
           {/* Daftar anggota (grid 1 / 2 kolom) */}
-          {filtered.length === 0 ? (
-            <EmptyState searching={trimmedQuery.length > 0} query={trimmedQuery} />
+          {loading && members.length === 0 ? (
+            <View className="items-center py-12">
+              <ActivityIndicator color="#4387C0" />
+              <Text className="mt-3 text-sm text-[#6B7690]">Memuat anggota...</Text>
+            </View>
+          ) : loadError ? (
+            <View className="items-center rounded-3xl border border-[#E3E8F3] bg-white px-6 py-10">
+              <Text className="text-center text-sm text-[#D64545]">{loadError}</Text>
+              <Pressable onPress={() => { setLoading(true); void loadMembers(); }} className="mt-4 rounded-xl bg-[#4387C0] px-5 py-2.5">
+                <Text className="text-sm font-semibold text-white">Coba lagi</Text>
+              </Pressable>
+            </View>
+          ) : filtered.length === 0 ? (
+            <EmptyState searching={trimmedQuery.length > 0} query={trimmedQuery} onAdd={handleOpenAdd} />
           ) : (
             <View className="-m-1.5 flex-row flex-wrap">
               {filtered.map((item) => (
                 <View key={item.id} className="p-1.5" style={{ width: `${100 / columns}%` }}>
-                  <MemberCard item={item} nameSize={nameSize} onResetFace={handleResetFace} />
+                  <MemberCard
+                    item={item}
+                    nameSize={nameSize}
+                    onResetFace={handleResetFace}
+                    onEdit={handleOpenEdit}
+                    onDelete={handleDeleteMember}
+                  />
                 </View>
               ))}
             </View>
@@ -293,6 +624,16 @@ export default function AnggotaFix() {
       <SafeAreaView edges={["bottom"]} className="bg-white">
         <AdminTabBar />
       </SafeAreaView>
+
+      {/* Modal Form Tambah / Edit */}
+      <MemberFormModal
+        key={`${modalVisible ? "open" : "closed"}-${selectedMember?.id ?? "new"}`}
+        visible={modalVisible}
+        initialData={selectedMember}
+        onClose={() => setModalVisible(false)}
+        onSubmit={handleFormSubmit}
+        submitting={submitting}
+      />
     </SafeAreaView>
   );
 }
