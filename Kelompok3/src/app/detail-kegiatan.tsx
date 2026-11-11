@@ -1,7 +1,20 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { apiFetch } from '@/constants/api';
+
+interface ActivityDetail {
+  id: string;
+  nama: string;
+  tanggal: string;
+  jam: string;
+  status: 'dibuka' | 'belum' | 'selesai';
+  lokasi: string;
+  agenda: string;
+}
 
 const COLORS = {
   navy: '#101477',
@@ -28,6 +41,16 @@ const MONTHS: Record<string, string> = {
 };
 
 function formatDate(date: string) {
+  if (!date) return 'Tanggal belum ditentukan';
+
+  const parsed = new Date(date);
+  if (!Number.isNaN(parsed.getTime())) {
+    const day = parsed.getUTCDate();
+    const month = MONTHS[parsed.getUTCMonth()] ?? parsed.getUTCMonth();
+    const year = parsed.getUTCFullYear();
+    return `${day} ${month} ${year}`;
+  }
+
   const [day, month, year] = date.split(' ');
   return `${day} ${MONTHS[month] ?? month} ${year}`;
 }
@@ -64,6 +87,7 @@ function DetailRow({
 
 export default function DetailKegiatanScreen() {
   const params = useLocalSearchParams<{
+    id?: string;
     title?: string;
     date?: string;
     time?: string;
@@ -72,14 +96,42 @@ export default function DetailKegiatanScreen() {
     agenda?: string;
   }>();
 
-  const title = params.title || 'Rapat Pengurus HIMAFOR';
-  const date = params.date || '08 Okt 2026';
-  const time = params.time || '19:00 - 21:00';
-  const isOpen = params.state === 'open' || !params.state;
-  const statusLabel =
-    params.state === 'completed' ? 'Selesai' : isOpen ? 'Dibuka' : 'Belum Dibuka';
-  const venue = params.venue || 'Belum ditentukan';
-  const agenda = params.agenda || 'Informasi agenda belum tersedia.';
+  const [activity, setActivity] = useState<ActivityDetail | null>(null);
+
+  useEffect(() => {
+    const activityId = Array.isArray(params.id) ? params.id[0] : params.id;
+    if (!activityId) return;
+
+    const loadActivity = async () => {
+      try {
+        const response = await apiFetch(`/activities/${encodeURIComponent(activityId)}`);
+        const payload = await response.json();
+
+        if (!response.ok || !payload?.success || !payload.data) {
+          throw new Error(payload?.message || 'Gagal memuat detail kegiatan');
+        }
+
+        setActivity(payload.data as ActivityDetail);
+      } catch (error) {
+        console.warn('Failed to load activity detail', error);
+      }
+    };
+
+    void loadActivity();
+  }, [params.id]);
+
+  const title = activity?.nama || params.title || 'Rapat Pengurus HIMAFOR';
+  const date = activity?.tanggal || params.date || '08 Okt 2026';
+  const time = activity?.jam || params.time || '19:00 - 21:00';
+  const state = activity?.status || (params.state === 'completed' ? 'selesai' : params.state === 'not-open' ? 'belum' : 'dibuka');
+  const isOpen = state === 'dibuka';
+  const statusLabel = state === 'selesai' ? 'Selesai' : isOpen ? 'Dibuka' : 'Belum Dibuka';
+  const venue = activity?.lokasi || params.venue || 'Belum ditentukan';
+  const agenda = activity?.agenda || params.agenda || 'Informasi agenda belum tersedia.';
+
+  const stateBadgeStyle = useMemo(() => ({
+    backgroundColor: state === 'selesai' ? '#E7ECF4' : state === 'belum' ? '#FFF1D6' : '#DDF4F2',
+  }), [state]);
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
@@ -104,7 +156,7 @@ export default function DetailKegiatanScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}>
           <View style={styles.eventCard}>
-            <View style={[styles.statusBadge, styles.eventStatusBadge]}>
+            <View style={[styles.statusBadge, styles.eventStatusBadge, stateBadgeStyle]}>
               <Text style={styles.statusText}>{statusLabel}</Text>
             </View>
             <Text style={styles.eventTitle}>{title}</Text>
@@ -122,7 +174,7 @@ export default function DetailKegiatanScreen() {
 
           <View style={styles.presenceCard}>
             <Text style={styles.sectionTitle}>Status presensi</Text>
-            <View style={styles.statusBadge}>
+            <View style={[styles.statusBadge, stateBadgeStyle]}>
               <Text style={styles.statusText}>{statusLabel}</Text>
             </View>
           </View>
