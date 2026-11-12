@@ -34,6 +34,7 @@ function toEventResponse(activity, sessions = []) {
     tanggal: activity.tanggal.toISOString(),
     jam: [activity.jamMulai, activity.jamSelesai].filter(Boolean).join("–"),
     lokasi: activity.lokasi || "",
+    agenda: activity.agenda || "",
     status,
   };
 }

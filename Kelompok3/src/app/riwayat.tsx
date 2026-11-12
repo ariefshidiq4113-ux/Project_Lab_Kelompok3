@@ -1,6 +1,12 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 import {
   AttendanceRecord,
@@ -10,106 +16,164 @@ import {
 } from '@/components/attendance-ui';
 import { MainScreen } from '@/components/main-screen';
 import { apiFetch } from '@/services/api';
+import { getToken } from '@/services/auth.service';
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const FILTERS = ['Semua', 'Hadir', 'Tidak hadir'] as const;
 type HistoryFilter = (typeof FILTERS)[number];
 
-interface ApiAttendanceRecord {
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface PresensiItem {
   id: string;
-  eventId: {
-    nama: string;
-    tanggal: string;
-  };
-  waktu: string;
-  status: 'Hadir' | 'Terlambat' | 'Izin';
+  kegiatanNama: string;
+  waktuPresensi: string;
+  status: 'hadir' | 'ditolak';
 }
 
-interface AttendanceListResponse {
-  success: boolean;
-  data: ApiAttendanceRecord[];
+interface PresensiResponse {
+  total: number;
+  data: PresensiItem[];
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function formatTanggal(isoString: string): string {
+  try {
+    return new Date(isoString).toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return isoString;
+  }
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function RiwayatScreen() {
   const [filter, setFilter] = useState<HistoryFilter>('Semua');
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isFocused = useRef(false);
 
-  const loadHistory = useCallback(async () => {
-    setLoading(true);
+  // ── Fetch dari API ──────────────────────────────────────────────────────────
+  const fetchRiwayat = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     setError(null);
+
     try {
-      // Mengambil riwayat presensi dari backend
-      // Sesuaikan endpoint dengan ID anggota yang sedang login atau route riwayat user
-      const response = await apiFetch<AttendanceListResponse>('/attendance/my-history');
-      if (isFocused.current && response && response.data) {
-        const mappedRecords: AttendanceRecord[] = response.data.map((item) => ({
-          title: item.eventId?.nama || 'Kegiatan HIMAFOR',
-          date: item.eventId?.tanggal || item.waktu,
-          present: item.status === 'Hadir' || item.status === 'Terlambat',
-        }));
-        setRecords(mappedRecords);
-      }
-    } catch (requestError: unknown) {
-      if (isFocused.current) {
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : 'Gagal memuat riwayat presensi.',
-        );
-      }
+      const token = await getToken();
+      const json = await apiFetch<PresensiResponse>('/presensi/me', {
+        token,
+      });
+
+      const mapped: AttendanceRecord[] = json.data.map((item) => ({
+        title: item.kegiatanNama,
+        date: formatTanggal(item.waktuPresensi),
+        present: item.status === 'hadir',
+      }));
+
+      setRecords(mapped);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Gagal memuat riwayat presensi.',
+      );
     } finally {
-      if (isFocused.current) setLoading(false);
+      setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      isFocused.current = true;
-      void loadHistory();
-      return () => {
-        isFocused.current = false;
-      };
-    }, [loadHistory]),
-  );
+  // ── Load pertama kali ───────────────────────────────────────────────────────
+  useEffect(() => {
+    void fetchRiwayat();
+  }, [fetchRiwayat]);
 
+  // ── Filter ──────────────────────────────────────────────────────────────────
   const visibleRecords = useMemo(() => {
-    if (filter === 'Hadir') return records.filter((record) => record.present);
-    if (filter === 'Tidak hadir') return records.filter((record) => !record.present);
-    return records;
-  }, [filter, records]);
+    if (filter === 'Hadir') {
+      return records.filter((record) => record.present);
+    }
 
+    if (filter === 'Tidak hadir') {
+      return records.filter((record) => !record.present);
+    }
+
+    return records;
+  }, [records, filter]);
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <MainScreen activePath="/riwayat">
       <ScrollView
         className="flex-1 bg-surface"
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void fetchRiwayat(true)}
+            tintColor="#101477"
+          />
+        }
+      >
         <View className="pt-[22px] px-5 pb-6">
           <PageTitle>Riwayat presensi</PageTitle>
-          <FilterChips options={FILTERS} selected={filter} onSelect={setFilter} />
-          <View>
-            {loading ? (
-              <Text className="py-4 text-center text-muted">Memuat riwayat...</Text>
-            ) : error ? (
-              <View className="items-center gap-3 py-4">
-                <Text className="text-center text-muted">{error}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void loadHistory()}>
-                  <Text className="font-bold text-navy">Coba lagi</Text>
-                </Pressable>
-              </View>
-            ) : visibleRecords.length === 0 ? (
-              <Text className="py-4 text-center text-muted">
-                Tidak ada riwayat presensi untuk filter ini.
+
+          <FilterChips
+            options={FILTERS}
+            selected={filter}
+            onSelect={setFilter}
+          />
+
+          {/* Loading */}
+          {loading && (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <ActivityIndicator color="#101477" size="large" />
+            </View>
+          )}
+
+          {/* Error */}
+          {!loading && error && (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <Text
+                style={{
+                  color: '#C0394F',
+                  fontSize: 14,
+                  textAlign: 'center',
+                }}
+              >
+                {error}
               </Text>
-            ) : (
-              visibleRecords.map((record, index) => (
-                <HistoryCard key={`${record.present}-${index}`} record={record} />
-              ))
-            )}
-          </View>
+            </View>
+          )}
+
+          {/* Empty */}
+          {!loading && !error && visibleRecords.length === 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <Text style={{ color: '#7183A2', fontSize: 14 }}>
+                Belum ada riwayat presensi.
+              </Text>
+            </View>
+          )}
+
+          {/* Data */}
+          {!loading && !error && (
+            <View>
+              {visibleRecords.map((record, index) => (
+                <HistoryCard
+                  key={`${record.present}-${index}`}
+                  record={record}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </MainScreen>
