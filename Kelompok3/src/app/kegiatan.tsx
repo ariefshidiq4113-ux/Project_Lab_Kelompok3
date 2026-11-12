@@ -31,11 +31,13 @@ function mapActivity(item: ApiActivity): ActivityItem {
   return {
     id: item.id,
     title: item.nama,
-    date: eventDate.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }),
+    date: isNaN(eventDate.getTime())
+      ? item.tanggal
+      : eventDate.toLocaleDateString('id-ID', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        }),
     time: item.jam,
     state:
       item.status === 'dibuka'
@@ -45,7 +47,7 @@ function mapActivity(item: ApiActivity): ActivityItem {
           : 'not-open',
     venue: item.lokasi ?? '-',
     agenda: item.agenda ?? '-',
-    eventDate,
+    eventDate: isNaN(eventDate.getTime()) ? new Date() : eventDate,
   };
 }
 
@@ -60,8 +62,8 @@ export default function KegiatanScreen() {
     setLoading(true);
     setError(null);
     try {
-      // Memanggil endpoint backend /events yang dikelola oleh eventController.js
-      const response = await apiFetch<ActivityListResponse>('/events');
+      // Mengambil data dari endpoint /activities (activityController backend)
+      const response = await apiFetch<ActivityListResponse>('/activities');
       if (isFocused.current && response && response.data) {
         setActivities(response.data.map(mapActivity));
       }

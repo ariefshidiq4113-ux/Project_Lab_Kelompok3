@@ -291,4 +291,40 @@ export const attendanceController = {
       return reportError(res, error, "recap");
     }
   },
+
+  async getMyAttendanceHistory(req, res) {
+    try {
+      const records = await AttendanceRecord.find({ memberId: req.memberId })
+        .populate({
+          path: "sessionId",
+          select: "activityId",
+          populate: { path: "activityId", select: "judul tanggal" },
+        })
+        .sort({ waktu: -1 });
+
+      const statusLabels = {
+        hadir: "Hadir",
+        terlambat: "Terlambat",
+        izin: "Izin",
+        alpha: "Tidak hadir",
+      };
+
+      return res.status(200).json({
+        success: true,
+        data: records.map((record) => {
+          const activity = record.sessionId?.activityId;
+          return {
+            id: record._id.toString(),
+            eventId: activity
+              ? { nama: activity.judul, tanggal: activity.tanggal.toISOString() }
+              : undefined,
+            waktu: record.waktu.toISOString(),
+            status: statusLabels[record.status] ?? "Tidak hadir",
+          };
+        }),
+      });
+    } catch (error) {
+      return reportError(res, error, "my-history");
+    }
+  },
 };
