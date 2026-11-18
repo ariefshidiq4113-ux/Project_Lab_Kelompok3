@@ -370,10 +370,21 @@ export const handleGoogleOAuthCallback = async (req, res) => {
   const appRedirectUri = stateData.appRedirectUri || "kelompok3://";
   const callbackUrl = stateData.callbackUrl;
 
+  console.log("[Google OAuth] Callback diterima. Code:", Boolean(code), "Google error:", googleError);
+  console.log("[Google OAuth] appRedirectUri tujuan:", appRedirectUri);
+
   const returnToApp = (params) => {
     const separator = appRedirectUri.includes("?") ? "&" : "?";
     const query = new URLSearchParams(params).toString();
     const targetUrl = `${appRedirectUri}${separator}${query}`;
+    const isError = Boolean(params.error);
+
+    // Intent URL khusus Android untuk Expo Go jika targetUrl berawalan exp://
+    let intentUrl = targetUrl;
+    if (targetUrl.startsWith("exp://") || targetUrl.startsWith("exps://")) {
+      const hostAndPath = targetUrl.replace(/^exps?:\/\//, "");
+      intentUrl = `intent://${hostAndPath}#Intent;scheme=exp;package=host.exp.exponent;end;`;
+    }
 
     return res.send(`
 <!DOCTYPE html>
@@ -383,22 +394,45 @@ export const handleGoogleOAuthCallback = async (req, res) => {
   <title>HIMAFOR Attendance</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f4f7fc; }
-    .card { background: white; padding: 32px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; max-width: 90%; width: 360px; }
-    .btn { display: inline-block; margin-top: 20px; padding: 14px 24px; background: #101477; color: white; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; }
-    h3 { color: #101477; margin-bottom: 8px; }
-    p { color: #6b7280; font-size: 14px; margin: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f4f7fc; padding: 20px; box-sizing: border-box; }
+    .card { background: white; padding: 28px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; max-width: 100%; width: 360px; }
+    .btn { display: inline-block; margin-top: 18px; padding: 14px 24px; background: #101477; color: white; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; }
+    .error-box { background: #fee2e2; color: #dc2626; padding: 12px; border-radius: 10px; font-size: 14px; margin-top: 12px; text-align: left; }
+    h3 { color: #101477; margin-bottom: 8px; margin-top: 0; }
+    p { color: #6b7280; font-size: 14px; margin: 4px 0; }
   </style>
   <script>
-    window.location.href = ${JSON.stringify(targetUrl)};
+    function triggerRedirect() {
+      window.location.href = ${JSON.stringify(targetUrl)};
+      ${
+        targetUrl.startsWith("exp://") || targetUrl.startsWith("exps://")
+          ? `setTimeout(function() {
+               if (/Android/i.test(navigator.userAgent)) {
+                 window.location.href = ${JSON.stringify(intentUrl)};
+               }
+             }, 400);`
+          : ""
+      }
+    }
   </script>
 </head>
 <body>
   <div class="card">
-    <h3>Sedang Kembali ke Aplikasi...</h3>
-    <p>Jika aplikasi tidak terbuka otomatis, tekan tombol di bawah:</p>
-    <a class="btn" href="${targetUrl}">Buka Aplikasi HIMAFOR</a>
+    ${
+      isError
+        ? `<h3 style="color: #dc2626;">Login Gagal</h3>
+           <div class="error-box">${params.error}</div>
+           <a class="btn" href="${targetUrl}" onclick="triggerRedirect(); return false;">Kembali ke Aplikasi</a>`
+        : `<h3>Login Berhasil!</h3>
+           <p>Sedang mengalihkan ke aplikasi HIMAFOR...</p>
+           <a class="btn" href="${targetUrl}" onclick="triggerRedirect(); return false;">Buka Aplikasi HIMAFOR</a>`
+    }
   </div>
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(triggerRedirect, 200);
+    });
+  </script>
 </body>
 </html>
     `);
@@ -435,6 +469,7 @@ export const handleGoogleOAuthCallback = async (req, res) => {
 
     const userInfo = await userinfoRes.json();
     const email = userInfo?.email?.toLowerCase();
+    console.log("[Google OAuth] Email Google didapatkan:", email);
 
     if (!email) {
       return returnToApp({ error: "Email Google tidak ditemukan." });
@@ -442,8 +477,9 @@ export const handleGoogleOAuthCallback = async (req, res) => {
 
     const member = await Member.findOne({ email, aktif: true });
     if (!member) {
+      console.warn(`[Google OAuth] Email ${email} tidak ditemukan di database.`);
       return returnToApp({
-        error: "Email (" + email + ") belum terdaftar sebagai anggota HIMAFOR. Hubungi admin.",
+        error: `Email (${email}) belum terdaftar sebagai anggota HIMAFOR. Hubungi admin.`,
       });
     }
 
@@ -465,6 +501,8 @@ export const handleGoogleOAuthCallback = async (req, res) => {
       isAdmin: member.isAdmin,
       mustChangePassword: member.mustChangePassword,
     };
+
+    console.log(`[Google OAuth] Login sukses untuk ${member.nama} (${member.nim})`);
 
     return returnToApp({
       token: appToken,

@@ -17,6 +17,8 @@ import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { makeRedirectUri } from 'expo-auth-session';
 import { login, saveSession } from '@/services/auth.service';
 import { API_BASE_URL } from '@/constants/api';
@@ -74,6 +76,37 @@ function parseUrlParams(url: string): Record<string, string> {
   return params;
 }
 
+function getAppRedirectUri(): string {
+  if (Platform.OS === 'web') {
+    return typeof window !== 'undefined' ? window.location.origin : '';
+  }
+
+  // 1. Coba dari Constants.linkingUri (bawaan Expo Go: exp://...)
+  if (
+    Constants.linkingUri &&
+    (Constants.linkingUri.startsWith('exp://') || Constants.linkingUri.startsWith('exps://'))
+  ) {
+    return Constants.linkingUri.replace(/\/--(\/.*)?$/, '').replace(/\/+$/, '');
+  }
+
+  // 2. Coba dari hostUri dev server (Expo Go: exp://IP:PORT)
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    return `exp://${hostUri.replace(/\/+$/, '')}`;
+  }
+
+  // 3. Coba Linking.createURL dengan scheme eksplisit 'exp'
+  try {
+    const expUrl = Linking.createURL('', { scheme: 'exp' });
+    if (expUrl.startsWith('exp://') || expUrl.startsWith('exps://')) {
+      return expUrl.replace(/\/+$/, '');
+    }
+  } catch {}
+
+  // 4. Standalone APK build (kelompok3://)
+  return makeRedirectUri({ scheme: 'kelompok3' });
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function LoginScreen() {
@@ -91,17 +124,44 @@ export default function LoginScreen() {
   const [showRolePicker, setShowRolePicker] = useState(false);
   const [globalError, setGlobalError] = useState('');
 
+  const processOAuthUrl = async (url: string) => {
+    try {
+      const params = parseUrlParams(url);
+
+      if (params.error) {
+        setGlobalError(params.error);
+        return;
+      }
+
+      if (params.token && params.member) {
+        const memberData = JSON.parse(params.member);
+        await saveSession(params.token, memberData);
+        afterLogin(memberData);
+      } else {
+        setGlobalError('Data login dari Google tidak lengkap.');
+      }
+    } catch (err: any) {
+      console.error('[Google Auth] Gagal memproses session:', err);
+      setGlobalError('Gagal memproses data login.');
+    }
+  };
+
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', (event) => {
+      console.log('[Google Auth] Deep link listener menerima URL:', event.url);
+      processOAuthUrl(event.url);
+    });
+
+    return () => sub.remove();
+  }, []);
+
   const handleGoogleLogin = async () => {
     if (isAnyLoading) return;
     setGlobalError('');
     setGoogleLoading(true);
 
     try {
-      // makeRedirectUri otomatis menghasilkan URL callback yang sesuai:
-      // - Expo Go: exp://...
-      // - Standalone APK / dev build: kelompok3://...
-      // - Web: window.location.origin (misal http://localhost:8081)
-      const redirectUri = makeRedirectUri({ scheme: 'kelompok3' });
+      const redirectUri = getAppRedirectUri();
       console.log('[Google Auth] app redirectUri:', redirectUri);
 
       const authUrl = `${API_BASE_URL}/auth/google/start?redirect_uri=${encodeURIComponent(redirectUri)}`;
@@ -111,22 +171,7 @@ export default function LoginScreen() {
       console.log('[Google Auth] result:', result);
 
       if (result.type === 'success' && result.url) {
-        const params = parseUrlParams(result.url);
-
-        if (params.error) {
-          setGlobalError(params.error);
-          return;
-        }
-
-        if (params.token && params.member) {
-          const memberData = JSON.parse(params.member);
-          await saveSession(params.token, memberData);
-          afterLogin(memberData);
-        } else {
-          setGlobalError('Data login dari Google tidak lengkap.');
-        }
-      } else if (result.type === 'cancel' || result.type === 'dismiss') {
-        console.log('[Google Auth] Dibatalkan oleh pengguna.');
+        await processOAuthUrl(result.url);
       }
     } catch (err: any) {
       console.error('[Google Auth] Error:', err);
