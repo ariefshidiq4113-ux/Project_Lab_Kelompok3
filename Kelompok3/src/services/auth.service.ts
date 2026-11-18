@@ -121,7 +121,16 @@ export async function changePassword(
   });
 }
 
-/** Ambil data member terkini dari API (verifikasi token masih valid). */
+/** Login via Google OAuth menggunakan accessToken (fallback dari idToken). */
+export async function loginWithGoogleAccessToken(accessToken: string): Promise<MemberPayload> {
+  // Kirim accessToken ke backend — backend yang fetch userinfo ke Google
+  const data = await apiFetch<LoginResponse>('/auth/google/token', {
+    method: 'POST',
+    body: { accessToken },
+  });
+  await saveSession(data.token, data.member);
+  return data.member;
+}
 export async function fetchMe(): Promise<MemberPayload> {
   const token = await getToken();
   const data = await apiFetch<{ member: MemberPayload }>('/auth/me', { token });

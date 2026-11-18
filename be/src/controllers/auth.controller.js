@@ -129,18 +129,117 @@ export const getMe = async (req, res) => {
 };
 
 /**
- * POST /auth/google
- * Body: { idToken: string }
- *
- * Flow:
- * 1. Verifikasi idToken ke Google
- * 2. Ambil email dari payload Google
- * 3. Cari member di database berdasarkan email
- * 4. Return JWT app + data member
- *
- * Catatan: Google OAuth hanya untuk member yang emailnya SUDAH terdaftar.
- * Pendaftaran akun baru tetap dilakukan oleh admin.
+ * POST /auth/google/email
+ * Body: { email: string, googleId: string }
+ * Dipakai saat accessToken tersedia tapi bukan idToken.
+ * Email sudah diverifikasi Google di sisi frontend via userinfo endpoint.
  */
+export const loginWithGoogleEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email wajib diisi." });
+    }
+
+    const member = await Member.findOne({
+      email: email.trim().toLowerCase(),
+      aktif: true,
+    });
+
+    if (!member) {
+      return res.status(403).json({
+        message: "Email ini tidak terdaftar sebagai anggota HIMAFOR. Hubungi admin.",
+      });
+    }
+
+    const payload = {
+      sub: member._id.toString(),
+      nim: member.nim,
+      isAdmin: member.isAdmin,
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+    return res.status(200).json({
+      token,
+      member: {
+        id: member._id,
+        nama: member.nama,
+        nim: member.nim,
+        email: member.email,
+        jabatan: member.jabatan,
+        departemen: member.departemen,
+        kodeDepartemen: member.kodeDepartemen,
+        isAdmin: member.isAdmin,
+        mustChangePassword: member.mustChangePassword,
+      },
+    });
+  } catch (err) {
+    console.error("[loginWithGoogleEmail]", err);
+    return res.status(500).json({ message: "Terjadi kesalahan server." });
+  }
+};
+export const loginWithGoogleToken = async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({ message: "accessToken wajib diisi." });
+    }
+
+    // Backend fetch userinfo dari Google
+    const googleRes = await fetch("https://www.googleapis.com/userinfo/v2/me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!googleRes.ok) {
+      return res.status(401).json({ message: "accessToken Google tidak valid." });
+    }
+
+    const userInfo = await googleRes.json();
+    const email = userInfo.email?.toLowerCase();
+
+    if (!email) {
+      return res.status(401).json({ message: "Email tidak ditemukan di akun Google." });
+    }
+
+    const member = await Member.findOne({ email, aktif: true });
+
+    if (!member) {
+      return res.status(403).json({
+        message: "Email ini tidak terdaftar sebagai anggota HIMAFOR. Hubungi admin.",
+      });
+    }
+
+    const payload = {
+      sub: member._id.toString(),
+      nim: member.nim,
+      isAdmin: member.isAdmin,
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+    return res.status(200).json({
+      token,
+      member: {
+        id: member._id,
+        nama: member.nama,
+        nim: member.nim,
+        email: member.email,
+        jabatan: member.jabatan,
+        departemen: member.departemen,
+        kodeDepartemen: member.kodeDepartemen,
+        isAdmin: member.isAdmin,
+        mustChangePassword: member.mustChangePassword,
+      },
+    });
+  } catch (err) {
+    console.error("[loginWithGoogleToken]", err);
+    return res.status(500).json({ message: "Terjadi kesalahan server." });
+  }
+};
+
 export const loginWithGoogle = async (req, res) => {
   try {
     const { idToken } = req.body;
