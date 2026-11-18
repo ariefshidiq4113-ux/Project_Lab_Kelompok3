@@ -10,6 +10,7 @@ import envVariables from "./utils/ENV.js";
 const app = express();
 const PORT = envVariables.PORT || 3000;
 
+await connectDb();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -37,7 +38,6 @@ app.use("/presensi", presensiRouter);
 app.use((_req, res) => res.status(404).json({ message: "Route tidak ditemukan" }));
 
 // Start
-await connectDb();
 app.listen(PORT, () => {
   console.log(`Server berjalan di port ${PORT}`);
 });
