@@ -5,6 +5,7 @@ const envVariables = {
   MONGODB_URI: process.env.MONGODB_URI || "",
   PORT: process.env.PORT || "3000",
   JWT_SECRET: process.env.JWT_SECRET || "",
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
 };
 
 if (!envVariables.MONGODB_URI) {
