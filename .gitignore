@@ -22,4 +22,5 @@ Thumbs.db
 *.suo
 *.user
 .vscode/
-OAUTH_SETUP.mdclient_secret_*.json
+OAUTH_SETUP.md
+client_secret_*.json
