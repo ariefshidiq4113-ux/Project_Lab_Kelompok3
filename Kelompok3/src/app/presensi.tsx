@@ -6,7 +6,7 @@
  * Integrasi expo-camera bisa ditambahkan nanti tanpa mengubah struktur step.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -25,7 +25,6 @@ const NAVY   = '#101477';
 const TEAL   = '#39BFB7';
 const MUTED  = '#7183A2';
 const BORDER = '#DCE5F0';
-const RED    = '#C0394F';
 
 // ─── Step definitions ─────────────────────────────────────────────────────────
 type StepKey = 'sesi' | 'liveness' | 'cocokkan';
@@ -102,7 +101,7 @@ const stepStyles = StyleSheet.create({
 
 // ─── Camera Oval ─────────────────────────────────────────────────────────────
 function CameraOval({ scanning }: { scanning: boolean }) {
-  const pulse = useRef(new Animated.Value(1)).current;
+  const [pulse] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     if (scanning) {

@@ -1,8 +1,21 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { apiFetch } from '@/constants/api';
 import { MainScreen } from '@/components/main-screen';
+import { getMember } from '@/services/auth.service';
+
+interface ActivityResponse {
+  id: string;
+  nama: string;
+  tanggal: string;
+  jam: string;
+  lokasi: string;
+  status: 'dibuka' | 'belum' | 'selesai';
+  agenda?: string;
+}
 
 const COLORS = {
   navy: '#101477',
@@ -12,12 +25,87 @@ const COLORS = {
   background: '#F4F7FC',
 };
 
-const UPCOMING_ACTIVITIES = [
-  { title: 'Evaluasi Program Kerja', date: '10 Okt 2026' },
-  { title: 'Workshop UI/UX Design', date: '20 Okt 2026' },
-];
+function formatActivityDate(dateValue: string) {
+  if (!dateValue) return 'Tanggal belum ditentukan';
+
+  const parsed = new Date(dateValue);
+  if (!Number.isNaN(parsed.getTime())) {
+    const day = parsed.getUTCDate();
+    const month = MONTHS[parsed.getUTCMonth()];
+    const year = parsed.getUTCFullYear();
+    return `${day} ${month} ${year}`;
+  }
+
+  return dateValue;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 export default function BerandaScreen() {
+  const [memberName, setMemberName] = useState('Anggota');
+  const [memberRole, setMemberRole] = useState('Anggota');
+  const [activities, setActivities] = useState<ActivityResponse[]>([]);
+  const [attendanceSummary, setAttendanceSummary] = useState({ hadir: 0, tidakHadir: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const member = await getMember();
+        if (member) {
+          setMemberName(member.nama || 'Anggota');
+          setMemberRole(member.isAdmin ? 'Admin' : 'Anggota');
+        }
+
+        const activityResponse = await apiFetch('/activities');
+        const activityPayload = await activityResponse.json();
+        if (!activityResponse.ok || !activityPayload?.success) {
+          throw new Error(activityPayload?.message || 'Gagal memuat kegiatan');
+        }
+        setActivities(Array.isArray(activityPayload.data) ? activityPayload.data : []);
+
+        const recapResponse = await apiFetch('/attendance/recap');
+        const recapPayload = await recapResponse.json();
+        if (!recapResponse.ok || !recapPayload?.success) {
+          throw new Error(recapPayload?.message || 'Gagal memuat rekap kehadiran');
+        }
+
+        const summary = recapPayload.summary ?? {};
+        setAttendanceSummary({
+          hadir: Number(summary.hadir ?? 0),
+          tidakHadir: Number(summary.tidakHadir ?? 0),
+        });
+      } catch (error) {
+        console.warn('Failed to load beranda data', error);
+        setActivities([]);
+        setAttendanceSummary({ hadir: 0, tidakHadir: 0 });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadData();
+  }, []);
+
+  const todayActivity = useMemo(() => {
+    if (!activities.length) return null;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    return activities.find((activity) => {
+      const date = new Date(activity.tanggal);
+      return date.getFullYear() === today.getFullYear()
+        && date.getMonth() === today.getMonth()
+        && date.getDate() === today.getDate();
+    }) || activities.find((activity) => new Date(activity.tanggal) >= now) || activities[0];
+  }, [activities]);
+
+  const upcomingActivities = useMemo(() => {
+    const list = activities.filter((activity) => activity.id !== todayActivity?.id);
+    return list.slice(0, 2);
+  }, [activities, todayActivity]);
+
   return (
     <MainScreen activePath="/beranda" showNotifications>
       <ScrollView
@@ -26,9 +114,9 @@ export default function BerandaScreen() {
         showsVerticalScrollIndicator={false}>
         <View style={styles.greetingSection}>
           <View style={styles.greetingRow}>
-            <Text style={styles.greeting}>Halo, [Nama]</Text>
+            <Text style={styles.greeting}>Halo, {memberName}</Text>
             <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>[Role]</Text>
+              <Text style={styles.roleText}>{memberRole}</Text>
             </View>
           </View>
         </View>
@@ -37,11 +125,11 @@ export default function BerandaScreen() {
           <Text style={styles.cardHeading}>Kehadiran</Text>
           <View style={styles.statsRow}>
             <View style={[styles.statTile, styles.presentTile]}>
-              <Text style={styles.statNumber}>5</Text>
+              <Text style={styles.statNumber}>{loading ? '—' : attendanceSummary.hadir}</Text>
               <Text style={styles.statLabel}>Hadir</Text>
             </View>
             <View style={[styles.statTile, styles.absentTile]}>
-              <Text style={styles.statNumber}>2</Text>
+              <Text style={styles.statNumber}>{loading ? '—' : attendanceSummary.tidakHadir}</Text>
               <Text style={styles.statLabel}>Tidak hadir</Text>
             </View>
           </View>
@@ -49,26 +137,54 @@ export default function BerandaScreen() {
 
         <Text style={[styles.sectionHeading, styles.todayHeading]}>Kegiatan hari ini</Text>
         <View style={styles.todayCard}>
-          <Text style={styles.todayTitle}>Rapat Pengurus HIMAFOR</Text>
+          <Text style={styles.todayTitle}>{todayActivity?.nama || 'Belum ada kegiatan yang tersedia'}</Text>
           <View style={styles.todayMeta}>
             <View style={styles.tealDot} />
-            <Text style={styles.todayDate}>08 Okt 2026 · 19:00–21:00</Text>
+            <Text style={styles.todayDate}>
+              {todayActivity ? `${formatActivityDate(todayActivity.tanggal)} · ${todayActivity.jam}` : 'Data kegiatan belum tersedia'}
+            </Text>
           </View>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push('/presensi')}
-            style={({ pressed }) => [styles.attendanceButton, pressed && styles.pressed]}>
+            disabled={!todayActivity}
+            onPress={() => {
+              if (!todayActivity) return;
+              router.push({
+                pathname: '/detail-kegiatan',
+                params: {
+                  id: todayActivity.id,
+                  title: todayActivity.nama,
+                  date: formatActivityDate(todayActivity.tanggal),
+                  time: todayActivity.jam,
+                  state: todayActivity.status,
+                  venue: todayActivity.lokasi || '',
+                  agenda: todayActivity.agenda || '',
+                },
+              });
+            }}
+            style={({ pressed }) => [styles.attendanceButton, (!todayActivity || loading) && styles.attendanceButtonDisabled, pressed && styles.pressed]}>
             <Text style={styles.attendanceButtonText}>PRESENSI</Text>
           </Pressable>
         </View>
 
         <Text style={[styles.sectionHeading, styles.upcomingHeading]}>Kegiatan mendatang</Text>
-        {UPCOMING_ACTIVITIES.map((activity) => (
+        {upcomingActivities.length > 0 ? upcomingActivities.map((activity) => (
           <Pressable
-            key={activity.title}
+            key={activity.id}
             accessibilityRole="button"
-            accessibilityLabel={`${activity.title}, ${activity.date}`}
-            onPress={() => router.push('/kegiatan')}
+            accessibilityLabel={`${activity.nama}, ${formatActivityDate(activity.tanggal)}`}
+            onPress={() => router.push({
+              pathname: '/detail-kegiatan',
+              params: {
+                id: activity.id,
+                title: activity.nama,
+                date: formatActivityDate(activity.tanggal),
+                time: activity.jam,
+                state: activity.status,
+                venue: activity.lokasi || '',
+                agenda: activity.agenda || '',
+              },
+            })}
             style={({ pressed }) => [styles.upcomingCard, pressed && styles.pressed]}>
             <View style={styles.calendarTile}>
               <SymbolView
@@ -79,12 +195,16 @@ export default function BerandaScreen() {
             </View>
             <View style={styles.upcomingCopy}>
               <Text style={styles.upcomingTitle} numberOfLines={1}>
-                {activity.title}
+                {activity.nama}
               </Text>
-              <Text style={styles.upcomingDate}>{activity.date}</Text>
+              <Text style={styles.upcomingDate}>{formatActivityDate(activity.tanggal)}</Text>
             </View>
           </Pressable>
-        ))}
+        )) : (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>Belum ada kegiatan mendatang.</Text>
+          </View>
+        )}
       </ScrollView>
     </MainScreen>
   );
@@ -229,6 +349,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+  },
+  attendanceButtonDisabled: {
+    opacity: 0.5,
+  },
+  emptyCard: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  emptyText: {
+    color: COLORS.muted,
+    fontSize: 13,
+    textAlign: 'center',
   },
   upcomingHeading: {
     marginBottom: 12,

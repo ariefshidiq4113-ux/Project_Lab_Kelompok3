@@ -1,8 +1,11 @@
 /**
  * auth.service.ts
- * Login, token storage (SecureStore), dan helper auth.
+ * Login, token storage, dan helper auth.
+ * Web: pakai localStorage
+ * Native: pakai expo-secure-store
  */
 
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { apiFetch } from './api';
 
@@ -27,6 +30,30 @@ export interface LoginResponse {
   member: MemberPayload;
 }
 
+// ─── Storage helpers (web: localStorage, native: SecureStore) ────────────────
+async function setItem(key: string, value: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    localStorage.setItem(key, value);
+  } else {
+    await SecureStore.setItemAsync(key, value);
+  }
+}
+
+async function getItem(key: string): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return localStorage.getItem(key);
+  }
+  return SecureStore.getItemAsync(key);
+}
+
+async function deleteItem(key: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    localStorage.removeItem(key);
+  } else {
+    await SecureStore.deleteItemAsync(key);
+  }
+}
+
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
 const TOKEN_KEY = 'himafor_token';
@@ -35,16 +62,16 @@ const MEMBER_KEY = 'himafor_member';
 // ─── Token helpers ────────────────────────────────────────────────────────────
 
 export async function saveSession(token: string, member: MemberPayload): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
-  await SecureStore.setItemAsync(MEMBER_KEY, JSON.stringify(member));
+  await setItem(TOKEN_KEY, token);
+  await setItem(MEMBER_KEY, JSON.stringify(member));
 }
 
 export async function getToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(TOKEN_KEY);
+  return getItem(TOKEN_KEY);
 }
 
 export async function getMember(): Promise<MemberPayload | null> {
-  const raw = await SecureStore.getItemAsync(MEMBER_KEY);
+  const raw = await getItem(MEMBER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as MemberPayload;
@@ -54,8 +81,8 @@ export async function getMember(): Promise<MemberPayload | null> {
 }
 
 export async function clearSession(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-  await SecureStore.deleteItemAsync(MEMBER_KEY);
+  await deleteItem(TOKEN_KEY);
+  await deleteItem(MEMBER_KEY);
 }
 
 // ─── API calls ────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
-const { Schema, model } = require('mongoose');
+import mongoose from "mongoose";
 
-const activitySchema = new Schema(
+const activitySchema = new mongoose.Schema(
   {
     judul: { type: String, required: true, trim: true, maxlength: 150 },
     tanggal: { type: Date, required: true },
@@ -8,11 +8,14 @@ const activitySchema = new Schema(
     jamSelesai: { type: String, match: /^\d{2}:\d{2}$/ },
     lokasi: { type: String, trim: true, maxlength: 150 },
     agenda: { type: String },
-    createdBy: { type: Schema.Types.ObjectId, ref: 'Member' },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Member" },
+    aktif: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
 
 activitySchema.index({ tanggal: 1 }); // tab Hari ini / Mendatang / Selesai
 
-module.exports = model('Activity', activitySchema);
+const Activity = mongoose.model("Activity", activitySchema, "activities");
+
+export default Activity;

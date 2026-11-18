@@ -230,3 +230,7 @@ https://github.com/user-attachments/assets/fd8228e1-6c30-4eee-9b58-020e2dbf2d85
 
 ### Demo APP
 - <video controls src="DEMO-1.mp4" title="Title"></video>
+
+
+### integrasi API dan CRUD
+![alt text](<Recording 2026-11-12 150055.gif>)

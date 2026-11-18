@@ -1,19 +1,11 @@
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { Image } from 'expo-image';
+import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { MainTabBar } from '@/components/main-tab-bar';
+import { changePassword } from '@/services/auth.service';
 
 const COLORS = {
   navy: '#101477',
@@ -71,27 +63,33 @@ export default function UbahPasswordScreen() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       Alert.alert('Data belum lengkap', 'Isi semua kolom password terlebih dahulu.');
       return;
     }
-
     if (newPassword.length < 8) {
       Alert.alert('Password terlalu pendek', 'Password baru harus minimal 8 karakter.');
       return;
     }
-
     if (newPassword !== confirmPassword) {
       Alert.alert('Password tidak cocok', 'Konfirmasi password baru belum sama.');
       return;
     }
 
-    Alert.alert(
-      'Belum terhubung',
-      'Form sudah valid, tetapi perubahan password belum terhubung ke layanan akun.',
-    );
+    setLoading(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      Alert.alert('Berhasil', 'Password berhasil diubah.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (err: any) {
+      Alert.alert('Gagal', err?.message ?? 'Terjadi kesalahan. Coba lagi.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -162,8 +160,11 @@ export default function UbahPasswordScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={handleSave}
-            style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]}>
-            <Text style={styles.saveButtonText}>Simpan Password</Text>
+            disabled={loading}
+            style={({ pressed }) => [styles.saveButton, (pressed || loading) && styles.pressed]}>
+            <Text style={styles.saveButtonText}>
+              {loading ? 'Menyimpan…' : 'Simpan Password'}
+            </Text>
           </Pressable>
 
           <View style={styles.securityNote}>

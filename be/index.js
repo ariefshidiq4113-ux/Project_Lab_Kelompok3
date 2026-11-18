@@ -9,9 +9,7 @@
 //   MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.hhia1d7.mongodb.net/presensi_pintar?retryWrites=true&w=majority
 // =====================================================================
 
-try { require('dotenv').config(); } catch (_) { /* dotenv opsional jika MONGODB_URI sudah di-set di terminal */ }
-const mongoose = require('mongoose');
-
+import mongoose from 'mongoose';
 const DB_NAME = 'presensi_pintar';
 
 // Data anggota (dari KTA_Pengurus_HIMAFOR_2627.xlsx). "hash" = bcrypt dari NIM.

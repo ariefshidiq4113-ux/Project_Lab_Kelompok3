@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,40 +11,44 @@ import {
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { MainScreen } from '@/components/main-screen';
+import { getMember, clearSession, MemberPayload } from '@/services/auth.service';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PRIMARY = '#101477';
 const TEAL = '#39BFB7';
 
-// ─── Mock data – replace with real auth/user context ─────────────────────────
-const USER = {
-  name: 'Nama Anggota',
-  email: 'anggota@email.com',
-  faceRegistered: true,
-};
-
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ProfilScreen() {
   const router = useRouter();
-  const [user] = useState(USER);
+  const [member, setMember] = useState<MemberPayload | null>(null);
 
-  const handlePerbaruiWajah = () => {
-    router.push('/register-face');
-  };
+  // Ambil data user dari session saat screen dibuka
+  useEffect(() => {
+    getMember().then((m) => setMember(m));
+  }, []);
 
-  const handleUbahPassword = () => {
-    router.push('/ubah-password');
-  };
+  const nama          = member?.nama          ?? 'Nama Anggota';
+  const email         = member?.email         ?? '-';
+  const faceRegistered = true; // TODO: sambungkan ke field face embedding saat tersedia
+
+  const handlePerbaruiWajah = () => router.push('/register-face');
+
+  const handleUbahPassword = () => router.push('/ubah-password' as any);
 
   const handleKeluar = () => {
-    Alert.alert('Keluar', 'Apakah kamu yakin ingin keluar?', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Keluar',
-        style: 'destructive',
-        onPress: () => router.replace('/login'),
-      },
-    ]);
+    const doLogout = async () => {
+      await clearSession();
+      router.replace('/login' as any);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Apakah kamu yakin ingin keluar?')) doLogout();
+    } else {
+      Alert.alert('Keluar', 'Apakah kamu yakin ingin keluar?', [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Keluar', style: 'destructive', onPress: doLogout },
+      ]);
+    }
   };
 
   return (
@@ -60,8 +65,8 @@ export default function ProfilScreen() {
           <View style={styles.avatar}>
             <Feather name="user" size={36} color="#FFFFFF" />
           </View>
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userEmail}>{user.email}</Text>
+          <Text style={styles.userName}>{nama}</Text>
+          <Text style={styles.userEmail}>{email}</Text>
         </View>
 
         {/* Face data card */}
@@ -74,10 +79,10 @@ export default function ProfilScreen() {
           <View
             style={[
               styles.statusBadge,
-              user.faceRegistered ? styles.statusTerdaftar : styles.statusBelum,
+              faceRegistered ? styles.statusTerdaftar : styles.statusBelum,
             ]}>
             <Text style={styles.statusText}>
-              {user.faceRegistered ? 'Terdaftar' : 'Belum'}
+              {faceRegistered ? 'Terdaftar' : 'Belum'}
             </Text>
           </View>
         </View>
