@@ -31,6 +31,7 @@ export interface LoginResponse {
 }
 
 // ─── Storage helpers (web: localStorage, native: SecureStore) ────────────────
+
 async function setItem(key: string, value: string): Promise<void> {
   if (Platform.OS === 'web') {
     localStorage.setItem(key, value);
@@ -59,7 +60,7 @@ async function deleteItem(key: string): Promise<void> {
 const TOKEN_KEY = 'himafor_token';
 const MEMBER_KEY = 'himafor_member';
 
-// ─── Token helpers ────────────────────────────────────────────────────────────
+// ─── Session helpers ──────────────────────────────────────────────────────────
 
 export async function saveSession(token: string, member: MemberPayload): Promise<void> {
   await setItem(TOKEN_KEY, token);
@@ -87,25 +88,27 @@ export async function clearSession(): Promise<void> {
 
 // ─── API calls ────────────────────────────────────────────────────────────────
 
-/**
- * Login ke backend.
- * Otomatis menyimpan token + data member ke SecureStore.
- * Mengembalikan data member termasuk flag `isAdmin`.
- */
+/** Login email/password. Simpan session, return data member. */
 export async function login(email: string, password: string): Promise<MemberPayload> {
   const data = await apiFetch<LoginResponse>('/auth/login', {
     method: 'POST',
     body: { email, password },
   });
-
   await saveSession(data.token, data.member);
   return data.member;
 }
 
-/**
- * Ubah password anggota.
- * Membutuhkan token yang tersimpan.
- */
+/** Login via Google OAuth. idToken dari expo-auth-session. */
+export async function loginWithGoogle(idToken: string): Promise<MemberPayload> {
+  const data = await apiFetch<LoginResponse>('/auth/google', {
+    method: 'POST',
+    body: { idToken },
+  });
+  await saveSession(data.token, data.member);
+  return data.member;
+}
+
+/** Ubah password. Butuh token tersimpan. */
 export async function changePassword(
   currentPassword: string,
   newPassword: string
@@ -118,9 +121,7 @@ export async function changePassword(
   });
 }
 
-/**
- * Ambil data member dari API (verifikasi token masih valid).
- */
+/** Ambil data member terkini dari API (verifikasi token masih valid). */
 export async function fetchMe(): Promise<MemberPayload> {
   const token = await getToken();
   const data = await apiFetch<{ member: MemberPayload }>('/auth/me', { token });

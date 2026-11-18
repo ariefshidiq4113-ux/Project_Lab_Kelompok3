@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -16,9 +16,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { login } from '@/services/auth.service';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
+import { login, loginWithGoogle } from '@/services/auth.service';
+import { GOOGLE_CLIENT_ID } from '@/constants/api';
 
-/** Hex untuk prop warna ikon (mirror tailwind.config.js). */
+// Wajib dipanggil di level modul agar browser OAuth bisa tutup otomatis
+WebBrowser.maybeCompleteAuthSession();
+
+// ─── Konstanta ────────────────────────────────────────────────────────────────
+
 const ICON = {
   navy: '#101477',
   muted: '#7183A2',
@@ -26,21 +34,23 @@ const ICON = {
   placeholder: '#9CA3AF',
 } as const;
 
-/* ------------------------------ Peran & tujuan ----------------------------- */
+const PRIMARY = '#101477';
 
 type Role = 'admin' | 'anggota';
 
-const ADMIN_HOME = '/presensi_admin'; // sesi presensi admin
-const MEMBER_HOME = '/register-face'; // alur anggota (daftar wajah / dashboard)
+const ADMIN_HOME = '/presensi_admin';
+const MEMBER_HOME = '/beranda';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function validateEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function inputBorderClass(error: string, focused: boolean) {
-  if (error) return 'border-danger';
-  if (focused) return 'border-navy';
-  return 'border-line';
+function borderColor(error: string, focused: boolean) {
+  if (error) return '#DC2626';
+  if (focused) return PRIMARY;
+  return '#DCE5F0';
 }
 
 function iconColor(error: string, focused: boolean) {
@@ -49,9 +59,12 @@ function iconColor(error: string, focused: boolean) {
   return ICON.muted;
 }
 
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 export default function LoginScreen() {
   const router = useRouter();
 
+  // Email/password state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
@@ -59,14 +72,65 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [showRolePicker, setShowRolePicker] = useState(false);
 
+  // Loading & modal
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showRolePicker, setShowRolePicker] = useState(false);
+  const [pendingMember, setPendingMember] = useState<{ isAdmin: boolean; mustChangePassword: boolean } | null>(null);
+  const [globalError, setGlobalError] = useState('');
+
+  // Google OAuth hook — useProxy agar redirect lewat https://auth.expo.io (bukan custom scheme)
+  const [_request, response, promptAsync] = Google.useAuthRequest({
+    clientId: GOOGLE_CLIENT_ID,
+    redirectUri: makeRedirectUri({ useProxy: true }),
+  });
+
+  // Handler setelah Google auth selesai
+  const handleGoogleResponse = async () => {
+    if (response?.type !== 'success') return;
+
+    const idToken = response.authentication?.idToken;
+    if (!idToken) {
+      setGlobalError('Gagal mendapatkan token Google. Coba lagi.');
+      return;
+    }
+
+    setGoogleLoading(true);
+    setGlobalError('');
+    try {
+      const member = await loginWithGoogle(idToken);
+      afterLogin(member);
+    } catch (err: any) {
+      setGlobalError(err?.message ?? 'Login Google gagal. Coba lagi.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Panggil handleGoogleResponse setiap response berubah
+  useEffect(() => {
+    handleGoogleResponse();
+  }, [response]);
+
+  // Navigasi setelah login berhasil (email/password atau Google)
+  function afterLogin(member: { isAdmin: boolean; mustChangePassword: boolean }) {
+    setPendingMember(member);
+    if (member.isAdmin) {
+      setShowRolePicker(true);
+    } else if (member.mustChangePassword) {
+      router.replace('/register-face' as any);
+    } else {
+      router.replace(MEMBER_HOME as any);
+    }
+  }
+
+  // Login email/password
   const handleLogin = async () => {
     if (loading) return;
+    setGlobalError('');
 
     let valid = true;
-
     if (!email.trim()) {
       setEmailError('Email tidak boleh kosong.');
       valid = false;
@@ -93,88 +157,81 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const member = await login(email.trim(), password);
-
-      if (member.isAdmin) {
-        // Akun admin: tanyakan dulu mau masuk sebagai Admin atau Anggota
-        setShowRolePicker(true);
-      } else if (member.mustChangePassword) {
-        router.replace('/register-face' as any);
-      } else {
-        router.replace(MEMBER_HOME as any);
-      }
+      afterLogin(member);
     } catch (err: any) {
       const msg: string = err?.message ?? '';
-      if (msg.toLowerCase().includes('email') || msg.toLowerCase().includes('password') || err?.status === 401) {
+      if (err?.status === 401 || msg.toLowerCase().includes('password')) {
         setPasswordError('Email atau password salah.');
       } else if (err?.status === undefined) {
-        // Network error — tidak bisa reach server
-        setPasswordError('Tidak dapat terhubung ke server. Periksa koneksi internet.');
+        setGlobalError('Tidak dapat terhubung ke server. Periksa koneksi internet.');
       } else {
-        setPasswordError(msg || 'Terjadi kesalahan. Coba lagi.');
+        setGlobalError(msg || 'Terjadi kesalahan. Coba lagi.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  /** Dipanggil dari popup pilihan peran. */
+  // Pilihan peran (hanya untuk admin)
   const enterAs = (target: Role) => {
     setShowRolePicker(false);
-    router.replace(target === 'admin' ? ADMIN_HOME : MEMBER_HOME);
+    router.replace((target === 'admin' ? ADMIN_HOME : MEMBER_HOME) as any);
   };
 
+  const isAnyLoading = loading || googleLoading;
+
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
-        className="flex-1"
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <View className="flex-grow justify-center px-6 py-12">
-            {/* Logo & Branding */}
-            <View className="mb-8 items-center">
-              <Image
-                source={require('@/assets/images/himafor-logo.png')}
-                className="mb-4 h-[76px] w-[76px]"
-                contentFit="contain"
-                accessibilityLabel="Logo HIMAFOR"
-              />
-              <Text className="mb-1 text-[28px] font-extrabold tracking-wide text-navy">
-                HIMAFOR
-              </Text>
-              <Text className="text-[15px] font-normal text-subtle">
-                Attendance System
-              </Text>
-            </View>
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 48 }}>
 
-            {/* Form */}
-            <View className="w-full max-w-[440px] gap-4 self-center rounded-[22px] border border-line bg-surface p-[22px]">
+          {/* Logo & Branding */}
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <Image
+              source={require('@/assets/images/himafor-logo.png')}
+              style={{ width: 76, height: 76, marginBottom: 16 }}
+              contentFit="contain"
+              accessibilityLabel="Logo HIMAFOR"
+            />
+            <Text style={{ color: PRIMARY, fontSize: 28, fontWeight: '800', letterSpacing: 1, marginBottom: 4 }}>
+              HIMAFOR
+            </Text>
+            <Text style={{ color: '#6B7280', fontSize: 15 }}>
+              Attendance System
+            </Text>
+          </View>
+
+          {/* Form card */}
+          <View style={{ width: '100%', maxWidth: 440, alignSelf: 'center', backgroundColor: '#F4F7FC', borderWidth: 1, borderColor: '#DCE5F0', borderRadius: 22, padding: 22, gap: 16 }}>
+
+            {/* Global error */}
+            {globalError ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12 }}>
+                <Feather name="alert-circle" size={15} color="#DC2626" />
+                <Text style={{ color: '#DC2626', fontSize: 13, flex: 1 }}>{globalError}</Text>
+              </View>
+            ) : null}
 
             {/* Email field */}
-            <View className="gap-1.5">
-              <Text className="text-sm font-bold text-navy">Email</Text>
-              <View
-                className={`flex-row items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3.5 ${inputBorderClass(emailError, emailFocused)}`}>
-                <Feather
-                  name="mail"
-                  size={18}
-                  color={iconColor(emailError, emailFocused)}
-                />
+            <View style={{ gap: 6 }}>
+              <Text style={{ color: PRIMARY, fontSize: 14, fontWeight: '700' }}>Email</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderColor: borderColor(emailError, emailFocused), borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#FFFFFF' }}>
+                <Feather name="mail" size={18} color={iconColor(emailError, emailFocused)} />
                 <TextInput
-                  className="flex-1 py-[13px] text-[15px] text-ink-dark"
+                  style={{ flex: 1, paddingVertical: 13, fontSize: 15, color: '#111827' }}
                   placeholder="nama@email.com"
                   placeholderTextColor={ICON.placeholder}
                   value={email}
                   onChangeText={(text) => {
                     setEmail(text);
-                    if (!text.trim()) {
-                      setEmailError('Email tidak boleh kosong.');
-                    } else if (!validateEmail(text.trim())) {
-                      setEmailError('Format email tidak valid.');
-                    } else {
-                      setEmailError('');
-                    }
+                    if (!text.trim()) setEmailError('Email tidak boleh kosong.');
+                    else if (!validateEmail(text.trim())) setEmailError('Format email tidak valid.');
+                    else setEmailError('');
                   }}
                   onFocus={() => setEmailFocused(true)}
                   onBlur={() => setEmailFocused(false)}
@@ -186,37 +243,28 @@ export default function LoginScreen() {
                 />
               </View>
               {emailError ? (
-                <View className="mt-0.5 flex-row items-center gap-1.5">
-                  <Feather name="alert-circle" size={13} color={ICON.danger} />
-                  <Text className="text-xs text-danger">{emailError}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Feather name="alert-circle" size={13} color="#DC2626" />
+                  <Text style={{ color: '#DC2626', fontSize: 12 }}>{emailError}</Text>
                 </View>
               ) : null}
             </View>
 
             {/* Password field */}
-            <View className="gap-1.5">
-              <Text className="text-sm font-bold text-navy">Password</Text>
-              <View
-                className={`flex-row items-center gap-2.5 rounded-xl border-[1.5px] bg-white px-3.5 ${inputBorderClass(passwordError, passwordFocused)}`}>
-                <Feather
-                  name="lock"
-                  size={18}
-                  color={iconColor(passwordError, passwordFocused)}
-                />
+            <View style={{ gap: 6 }}>
+              <Text style={{ color: PRIMARY, fontSize: 14, fontWeight: '700' }}>Password</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderColor: borderColor(passwordError, passwordFocused), borderRadius: 12, paddingHorizontal: 14, backgroundColor: '#FFFFFF' }}>
+                <Feather name="lock" size={18} color={iconColor(passwordError, passwordFocused)} />
                 <TextInput
-                  className="flex-1 py-[13px] text-[15px] text-ink-dark"
+                  style={{ flex: 1, paddingVertical: 13, fontSize: 15, color: '#111827' }}
                   placeholder="Password"
                   placeholderTextColor={ICON.placeholder}
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
-                    if (!text) {
-                      setPasswordError('Password tidak boleh kosong.');
-                    } else if (text.length < 6) {
-                      setPasswordError('Password minimal 6 karakter.');
-                    } else {
-                      setPasswordError('');
-                    }
+                    if (!text) setPasswordError('Password tidak boleh kosong.');
+                    else if (text.length < 6) setPasswordError('Password minimal 6 karakter.');
+                    else setPasswordError('');
                   }}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
@@ -230,79 +278,101 @@ export default function LoginScreen() {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityRole="button"
                   accessibilityLabel={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}>
-                  <Feather
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={18}
-                    color={ICON.muted}
-                  />
+                  <Feather name={showPassword ? 'eye-off' : 'eye'} size={18} color={ICON.muted} />
                 </TouchableOpacity>
               </View>
               {passwordError ? (
-                <View className="mt-0.5 flex-row items-center gap-1.5">
-                  <Feather name="alert-circle" size={13} color={ICON.danger} />
-                  <Text className="text-xs text-danger">{passwordError}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Feather name="alert-circle" size={13} color="#DC2626" />
+                  <Text style={{ color: '#DC2626', fontSize: 12 }}>{passwordError}</Text>
                 </View>
               ) : null}
             </View>
 
             {/* Login button */}
             <TouchableOpacity
-              className={`mt-1 items-center rounded-xl bg-navy py-4 active:opacity-85 ${loading ? 'opacity-70' : ''}`}
+              style={{ backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 4, opacity: isAnyLoading ? 0.7 : 1 }}
               onPress={handleLogin}
-              disabled={loading}
+              disabled={isAnyLoading}
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Login">
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+              {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Login</Text>}
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: '#DCE5F0' }} />
+              <Text style={{ color: '#9CA3AF', fontSize: 12 }}>atau</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: '#DCE5F0' }} />
+            </View>
+
+            {/* Google login button */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1.5, borderColor: '#DCE5F0', borderRadius: 12, paddingVertical: 14, backgroundColor: '#FFFFFF', opacity: isAnyLoading ? 0.7 : 1 }}
+              onPress={async () => {
+                setGlobalError('');
+                setGoogleLoading(true);
+                try {
+                  await promptAsync();
+                } finally {
+                  // loading dimatikan di handleGoogleResponse
+                }
+              }}
+              disabled={isAnyLoading || !GOOGLE_CLIENT_ID}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Login dengan Google">
+              {googleLoading ? (
+                <ActivityIndicator color={PRIMARY} />
               ) : (
-                <Text className="text-base font-bold text-white">Login</Text>
+                <>
+                  {/* Google "G" icon pakai teks berwarna */}
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#4285F4', lineHeight: 20 }}>G</Text>
+                  <Text style={{ color: PRIMARY, fontSize: 15, fontWeight: '600' }}>Login dengan Google</Text>
+                </>
               )}
             </TouchableOpacity>
 
-            <Text className="text-center text-[13px] text-subtle">
+            <Text style={{ textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
               Lupa password? Hubungi admin.
             </Text>
-          </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Popup pilihan peran: hanya muncul bila role di database = admin */}
+      {/* Popup pilihan peran (hanya untuk akun admin) */}
       <Modal
         visible={showRolePicker}
         transparent
         animationType="fade"
         onRequestClose={() => setShowRolePicker(false)}>
         <Pressable
-          className="flex-1 items-center justify-center bg-black/50 p-6"
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 24 }}
           onPress={() => setShowRolePicker(false)}>
-          {/* Pressable kosong agar ketukan di dalam kartu tidak menutup popup */}
           <Pressable
-            className="w-full max-w-[360px] rounded-2xl bg-white px-5 pb-6 pt-5"
+            style={{ width: '100%', maxWidth: 360, backgroundColor: '#FFFFFF', borderRadius: 20, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 }}
             onPress={() => {}}>
-            <Text className="text-center text-base font-bold text-navy">
-              Login Sebagai Admin atau Anggota
+            <Text style={{ textAlign: 'center', fontSize: 16, fontWeight: '700', color: PRIMARY }}>
+              Masuk sebagai?
             </Text>
-            <View className="my-4 h-px bg-card-line" />
-
-            <View className="flex-row gap-4">
+            <View style={{ height: 1, backgroundColor: '#E5E7EB', marginVertical: 16 }} />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity
-                className="flex-1 items-center rounded-[10px] bg-navy py-3.5 active:opacity-85"
+                style={{ flex: 1, alignItems: 'center', backgroundColor: PRIMARY, borderRadius: 10, paddingVertical: 14 }}
                 onPress={() => enterAs('admin')}
                 activeOpacity={0.85}
                 accessibilityRole="button"
                 accessibilityLabel="Login sebagai Admin">
-                <Text className="text-sm font-bold text-white">Admin</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Admin</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                className="flex-1 items-center rounded-[10px] bg-navy py-3.5 active:opacity-85"
+                style={{ flex: 1, alignItems: 'center', backgroundColor: PRIMARY, borderRadius: 10, paddingVertical: 14 }}
                 onPress={() => enterAs('anggota')}
                 activeOpacity={0.85}
                 accessibilityRole="button"
                 accessibilityLabel="Login sebagai Anggota">
-                <Text className="text-sm font-bold text-white">Anggota</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Anggota</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
