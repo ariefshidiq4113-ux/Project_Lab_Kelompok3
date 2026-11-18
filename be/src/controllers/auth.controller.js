@@ -1,10 +1,12 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import Member from "../models/member.model.js";
 import envVariables from "../utils/ENV.js";
 
 const JWT_SECRET = envVariables.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
+const googleClient = new OAuth2Client(envVariables.GOOGLE_CLIENT_ID);
 
 /**
  * POST /auth/login
@@ -122,6 +124,88 @@ export const getMe = async (req, res) => {
     return res.status(200).json({ member });
   } catch (err) {
     console.error("[getMe]", err);
+    return res.status(500).json({ message: "Terjadi kesalahan server." });
+  }
+};
+
+/**
+ * POST /auth/google
+ * Body: { idToken: string }
+ *
+ * Flow:
+ * 1. Verifikasi idToken ke Google
+ * 2. Ambil email dari payload Google
+ * 3. Cari member di database berdasarkan email
+ * 4. Return JWT app + data member
+ *
+ * Catatan: Google OAuth hanya untuk member yang emailnya SUDAH terdaftar.
+ * Pendaftaran akun baru tetap dilakukan oleh admin.
+ */
+export const loginWithGoogle = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ message: "idToken wajib diisi." });
+    }
+
+    if (!envVariables.GOOGLE_CLIENT_ID) {
+      return res.status(500).json({ message: "Google OAuth belum dikonfigurasi di server." });
+    }
+
+    // 1. Verifikasi idToken ke Google
+    let googlePayload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken,
+        audience: envVariables.GOOGLE_CLIENT_ID,
+      });
+      googlePayload = ticket.getPayload();
+    } catch {
+      return res.status(401).json({ message: "Token Google tidak valid atau sudah kedaluwarsa." });
+    }
+
+    const googleEmail = googlePayload?.email?.toLowerCase();
+    const emailVerified = googlePayload?.email_verified;
+
+    if (!googleEmail || !emailVerified) {
+      return res.status(401).json({ message: "Email Google belum terverifikasi." });
+    }
+
+    // 2. Cari member berdasarkan email
+    const member = await Member.findOne({ email: googleEmail, aktif: true });
+
+    if (!member) {
+      return res.status(403).json({
+        message: "Email ini tidak terdaftar sebagai anggota HIMAFOR. Hubungi admin.",
+      });
+    }
+
+    // 3. Buat JWT app
+    const payload = {
+      sub: member._id.toString(),
+      nim: member.nim,
+      isAdmin: member.isAdmin,
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+    return res.status(200).json({
+      token,
+      member: {
+        id: member._id,
+        nama: member.nama,
+        nim: member.nim,
+        email: member.email,
+        jabatan: member.jabatan,
+        departemen: member.departemen,
+        kodeDepartemen: member.kodeDepartemen,
+        isAdmin: member.isAdmin,
+        mustChangePassword: member.mustChangePassword,
+      },
+    });
+  } catch (err) {
+    console.error("[loginWithGoogle]", err);
     return res.status(500).json({ message: "Terjadi kesalahan server." });
   }
 };
