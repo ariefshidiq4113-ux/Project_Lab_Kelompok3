@@ -17,9 +17,9 @@ import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { login, loginWithGoogle, loginWithGoogleAccessToken } from '@/services/auth.service';
-import { GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '@/constants/api';
+import { makeRedirectUri } from 'expo-auth-session';
+import { login, saveSession } from '@/services/auth.service';
+import { API_BASE_URL } from '@/constants/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -55,6 +55,25 @@ function iconColor(error: string, focused: boolean) {
   return ICON.muted;
 }
 
+function parseUrlParams(url: string): Record<string, string> {
+  const params: Record<string, string> = {};
+  const queryIndex = url.indexOf('?');
+  if (queryIndex === -1) return params;
+  const queryString = url.slice(queryIndex + 1);
+  const pairs = queryString.split('&');
+  for (const pair of pairs) {
+    const [rawKey, ...rawValParts] = pair.split('=');
+    if (rawKey) {
+      try {
+        params[decodeURIComponent(rawKey)] = decodeURIComponent(rawValParts.join('=') || '');
+      } catch {
+        params[rawKey] = rawValParts.join('=') || '';
+      }
+    }
+  }
+  return params;
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function LoginScreen() {
@@ -72,60 +91,50 @@ export default function LoginScreen() {
   const [showRolePicker, setShowRolePicker] = useState(false);
   const [globalError, setGlobalError] = useState('');
 
-  // Android Client ID harus pakai reverse client ID sebagai redirect URI
-  const androidRedirectUri = `com.googleusercontent.apps.${GOOGLE_ANDROID_CLIENT_ID.replace('.apps.googleusercontent.com', '')}:/oauth2redirect`;
+  const handleGoogleLogin = async () => {
+    if (isAnyLoading) return;
+    setGlobalError('');
+    setGoogleLoading(true);
 
-  const [_request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    redirectUri: Platform.OS === 'android' ? androidRedirectUri : undefined,
-    scopes: ['openid', 'profile', 'email'],
-  });
+    try {
+      // makeRedirectUri otomatis menghasilkan URL callback yang sesuai:
+      // - Expo Go: exp://...
+      // - Standalone APK / dev build: kelompok3://...
+      // - Web: window.location.origin (misal http://localhost:8081)
+      const redirectUri = makeRedirectUri({ scheme: 'kelompok3' });
+      console.log('[Google Auth] app redirectUri:', redirectUri);
 
-  // Log redirect URI yang dipakai
-  useEffect(() => {
-    if (_request) {
-      console.log('[Google OAuth] redirectUri:', _request.redirectUri);
-      console.log('[Google OAuth] clientId:', (_request as any).clientId ?? 'tidak ada');
-    }
-  }, [_request]);
+      const authUrl = `${API_BASE_URL}/auth/google/start?redirect_uri=${encodeURIComponent(redirectUri)}`;
+      console.log('[Google Auth] authUrl:', authUrl);
 
-  useEffect(() => {
-    if (response?.type !== 'success') return;
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      console.log('[Google Auth] result:', result);
 
-    console.log('[Google OAuth] response:', JSON.stringify(response, null, 2));
+      if (result.type === 'success' && result.url) {
+        const params = parseUrlParams(result.url);
 
-    const idToken =
-      response.authentication?.idToken ??
-      (response.params as any)?.id_token ??
-      null;
+        if (params.error) {
+          setGlobalError(params.error);
+          return;
+        }
 
-    const accessToken =
-      response.authentication?.accessToken ??
-      (response.params as any)?.access_token ??
-      null;
-
-    if (!idToken && !accessToken) {
-      setGoogleLoading(false);
-      setGlobalError('Gagal mendapatkan token Google. Coba lagi.');
-      return;
-    }
-
-    (async () => {
-      try {
-        console.log('[Google OAuth] punya accessToken, kirim ke backend...');
-        const member = idToken
-          ? await loginWithGoogle(idToken)
-          : await loginWithGoogleAccessToken(accessToken!);
-        afterLogin(member);
-      } catch (err: any) {
-        console.log('[Google OAuth] error dari backend:', err);
-        setGlobalError(err?.message ?? 'Login Google gagal. Coba lagi.');
-      } finally {
-        setGoogleLoading(false);
+        if (params.token && params.member) {
+          const memberData = JSON.parse(params.member);
+          await saveSession(params.token, memberData);
+          afterLogin(memberData);
+        } else {
+          setGlobalError('Data login dari Google tidak lengkap.');
+        }
+      } else if (result.type === 'cancel' || result.type === 'dismiss') {
+        console.log('[Google Auth] Dibatalkan oleh pengguna.');
       }
-    })();
-  }, [response]);
+    } catch (err: any) {
+      console.error('[Google Auth] Error:', err);
+      setGlobalError(err?.message ?? 'Login Google gagal. Coba lagi.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   function afterLogin(member: { isAdmin: boolean; mustChangePassword: boolean }) {
     if (member.isAdmin) {
@@ -303,12 +312,8 @@ export default function LoginScreen() {
             {/* Google button */}
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1.5, borderColor: '#DCE5F0', borderRadius: 12, paddingVertical: 14, backgroundColor: '#FFFFFF', opacity: isAnyLoading ? 0.7 : 1 }}
-              onPress={() => {
-                setGlobalError('');
-                setGoogleLoading(true);
-                promptAsync();
-              }}
-              disabled={isAnyLoading || !GOOGLE_CLIENT_ID}
+              onPress={handleGoogleLogin}
+              disabled={isAnyLoading}
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Login dengan Google">

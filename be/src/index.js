@@ -8,6 +8,7 @@ import connectDb from "./services/db.js";
 import envVariables from "./utils/ENV.js";
 
 const app = express();
+app.set("trust proxy", true);
 const PORT = envVariables.PORT || 3000;
 
 await connectDb();
